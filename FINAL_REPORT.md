@@ -2,7 +2,7 @@
 
 ## Status in one paragraph
 
-Everything in the spec was built and verified locally: warehouse (2008-2027), adjusted-efficiency ratings with a walk-forward backtest, five more ranking systems and a consensus, a player layer, conference simulations with per-conference tiebreaker rules, watchability, an append-only prediction log, a 413-page static site, a nightly pipeline plus replay test, workflows, docs and stretch items. **What does not exist yet is anything on GitHub**: the environment's permission classifier denied `gh repo create cbb_analytics --public` (a public-surface action), and I did not try to work around it. So there is no remote, no push, no `warehouse` release, no GitHub Pages deployment, no live URL, and the GitHub Actions workflows have never run (they are written, syntax-checked by reading, and every step they call was run locally, including a full replay). The steps to finish are in `README.md` ("Publishing to GitHub Pages").
+Everything in the spec was built and verified locally: warehouse (2008-2027), adjusted-efficiency ratings with a walk-forward backtest, five more ranking systems and a consensus, a player layer, conference simulations with per-conference tiebreaker rules, watchability, an append-only prediction log, a 413-page static site, a nightly pipeline plus replay test, workflows, docs and stretch items. ****Update: it is now published** at https://racuthbertson101.github.io/cbb_analytics/ (repo racuthbertson101/cbb_analytics; `deploy.yml` and a manual `nightly.yml` dispatch both succeeded).
 
 ## What works (verified)
 
@@ -39,7 +39,6 @@ Ridge strength 3, no recency decay, blowout cap 60 (essentially neutral), team-s
 
 ## Exact next steps
 
-1. Create the repo and push: `gh repo create cbb_analytics --public --source=. --remote=origin --push` (or allow that command and ask me to continue).
-2. Enable Pages and workflow permissions, publish the warehouse (`uv run python -m pipeline.release upload`), run `deploy.yml`, then `nightly.yml`; put the URL in `PROGRESS.md`. If the nightly fails on GitHub, the usual suspects are the `gh release download` step (asset names) and runner time; both are isolated in `pipeline/release.py`.
-3. After the 2026-27 season: run `refit.yml` (or `make ratings`), re-check the roster-prior evidence, and fill in verified tiebreaker text for the 12 fallback conferences.
-4. Tournament module (the stub, game types and seed fields are ready), true preseason rosters for the prior, RAPM from play-by-play, and the mobile list in `docs/MOBILE_READINESS.md`.
+1. Watch the first scheduled nightly runs (07:30 UTC). Offseason runs are light (Mondays plus manual).
+2. After the 2026-27 season: run `refit.yml` (or `make ratings`), re-check the roster-prior evidence, and fill in verified tiebreaker text for the 12 fallback conferences.
+3. Tournament module (stub ready), true preseason rosters for the prior, RAPM from play-by-play, mobile list in `docs/MOBILE_READINESS.md`.

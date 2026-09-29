@@ -3,9 +3,9 @@
 Last completed step: Phases 0-9 built and verified locally; FINAL_REPORT.md written.
 Next step (needs the owner): GitHub steps that the permission classifier blocked (see KNOWN_ISSUES.md and README "Publishing to GitHub Pages"):
 create the public repo and push, publish the `warehouse` release assets, enable Pages, dispatch `deploy.yml` then `nightly.yml`, record the live URL below.
-Blockers: `gh repo create cbb_analytics --public` was denied ([Create Public Surface]); no remote exists, so nothing has been pushed and no live URL exists.
+Blockers: none. Repo https://github.com/racuthbertson101/cbb_analytics created and pushed; Pages, workflow permissions and the `warehouse` release (138 assets) set up.
 
-Live URL: NONE YET (blocked)
+Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a manual nightly.yml dispatch both succeeded on 2026-09-29)
 
 ## Checklist
 - [x] Phase 0: Setup and audit. Tools verified, structure, CLAUDE.md, DECISIONS.md, KNOWN_ISSUES.md, 4 skills (incl. frontend-design), DATA_AUDIT.md (start season 2008). GitHub repo creation BLOCKED.

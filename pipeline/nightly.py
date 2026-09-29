@@ -140,6 +140,13 @@ def main(argv=None):
         conferences.sim_standings(season, str(today), nsim=a.nsim, workers=a.workers, keep_only=True)
 
 
+    elif not (ROOT / "web" / "public" / "data" / "standings" / f"{cur}.json").exists():
+        # offseason: standings demo snapshots for the last completed season (mid-February replay + final actual standings)
+        g_ = pd.read_parquet(table_path("games", cur))
+        last_ = str(g_[g_.completed].game_date.max().date())
+        for d_ in (f"{cur}-02-15", last_):
+            conferences.sim_standings(cur, d_, nsim=a.nsim, workers=a.workers)
+
     # 7. exports
     upcoming = season if not live else None
     contract.export_all(current=cur, upcoming=upcoming)
