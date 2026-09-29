@@ -2,12 +2,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
+import SearchPalette from "./SearchPalette";
 
 const items = [
   ["/", "Today"],
   ["/rankings/", "Rankings"],
   ["/conferences/", "Conferences"],
   ["/players/", "Players"],
+  ["/predictions/", "Accuracy"],
+  ["/compare/", "Compare"],
   ["/tournament/", "Tournament"],
   ["/methodology/", "Methodology"],
 ];
@@ -29,7 +32,7 @@ function Inner() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto text-xs text-faint">Men&apos;s Division I</div>
+        <div className="ml-auto flex items-center gap-3"><SearchPalette /><span className="text-xs text-faint">Men&apos;s Division I</span></div>
       </div>
     </header>
   );

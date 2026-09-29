@@ -27,7 +27,26 @@ function WinBar({ p, lo, hi, a, h }: { p: number; lo: number | null; hi: number 
   );
 }
 
-function GameCard({ g, map, q }: { g: Game; map: Map<string, Team>; q?: number }) {
+const WLABELS = ["Quality", "Closeness", "Tempo", "Star power", "Stakes"];
+function Watch({ w, wc }: { w: number; wc: (number | null)[] | null }) {
+  return (
+    <span className="group relative">
+      <span className="chip cursor-default" style={{ color: w >= 7.5 ? "var(--accent)" : undefined, borderColor: w >= 7.5 ? "var(--accent)" : undefined }}>Watch {w.toFixed(1)}</span>
+      {wc && (
+        <span className="pointer-events-none absolute right-0 top-7 z-20 hidden w-56 rounded-lg border border-line bg-surface p-3 text-xs shadow-xl group-hover:block">
+          <span className="mb-1.5 block text-muted">Watchability (1-10) components, percentile 0-100</span>
+          {wc.map((v, i) => (
+            <span key={i} className="flex items-center gap-2 py-0.5"><span className="w-20 text-muted">{WLABELS[i]}</span>
+              <span className="relative h-1.5 flex-1 rounded-full bg-surface2"><span className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${v ?? 0}%` }} /></span>
+              <span className="num w-6 text-right">{v ?? "–"}</span></span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function GameCard({ g, map }: { g: Game; map: Map<string, Team> }) {
   const a = map.get(g.a), h = map.get(g.h);
   const nm = (t?: Team) => t?.short || t?.name || "TBD";
   const ph = g.p, pa = ph == null ? null : 1 - ph;
@@ -39,7 +58,7 @@ function GameCard({ g, map, q }: { g: Game; map: Map<string, Team>; q?: number }
         <span>{g.n ? "Neutral site" : "Home: " + nm(h)}{g.note ? ` · ${g.note.replace("NCAA Men's Basketball Championship", "NCAA").slice(0, 40)}` : ""}</span>
         <span className="flex gap-2">
           {g.t !== "regular" && <span className="chip">{g.t.replace("_", " ")}</span>}
-          {q != null && <span className="chip" title="Average AdjEM of the two teams">Quality {fmt(q, 0)}</span>}
+          {g.w != null && <Watch w={g.w} wc={g.wc} />}
         </span>
       </div>
       {[{ t: a, s: g.as, r: g.ar, pr: pa, sc: g.pa, id: g.a }, { t: h, s: g.hs, r: g.hr, pr: ph, sc: g.ph, id: g.h }].map((x, i) => {
@@ -89,6 +108,7 @@ export default function TodayView() {
   const ratingsPath = !meta || !season ? null : season <= meta.current_season ? `ratings/${season}.json` : "ratings/2027_preseason.json";
   const { data: RR } = useJson<Ratings & Pre>(ratingsPath);
   const [conf, setConf] = useState("All");
+  const [sortBy, setSortBy] = useState<"watch" | "quality" | "time">("watch");
 
   const games = useMemo(() => (G?.games ?? []).filter((g) => g.d === day && g.t !== "exhibition"), [G, day]);
   const qual = useMemo(() => {
@@ -108,8 +128,9 @@ export default function TodayView() {
   const confOf = (id: string) => shortConf(map.get(id)?.conf[String(season)] ?? map.get(id)?.conf[String(season - 1)]);
   const confs = useMemo(() => ["All", ...Array.from(new Set(games.flatMap((g) => [confOf(g.a), confOf(g.h)]))).filter(Boolean).sort()], [games, map]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = games.filter((g) => conf === "All" || confOf(g.a) === conf || confOf(g.h) === conf);
-  const top = [...games].filter((g) => qual.has(g.id)).sort((a, b) => (qual.get(b.id) ?? 0) - (qual.get(a.id) ?? 0)).slice(0, 4);
-  const list = [...shown].sort((a, b) => (qual.get(b.id) ?? -99) - (qual.get(a.id) ?? -99));
+  const top = [...games].filter((g) => g.w != null).sort((a, b) => (b.w ?? 0) - (a.w ?? 0)).slice(0, 4);
+  const list = [...shown].sort((a, b) =>
+    sortBy === "watch" ? (b.w ?? -1) - (a.w ?? -1) : sortBy === "quality" ? (qual.get(b.id) ?? -99) - (qual.get(a.id) ?? -99) : a.id.localeCompare(b.id));
 
   const go = (d: string) => { const p = new URLSearchParams(sp.toString()); p.set("date", d); router.replace(`?${p}`, { scroll: false }); };
   const seasonEndDay = meta?.current_last_date;
@@ -127,6 +148,9 @@ export default function TodayView() {
           <input type="date" value={day} onChange={(e) => e.target.value && go(e.target.value)} aria-label="Date" />
           <button className="chip hover:text-ink" onClick={() => go(addDays(day, 1))}>Next →</button>
           <select value={conf} onChange={(e) => setConf(e.target.value)}>{confs.map((c) => <option key={c}>{c}</option>)}</select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "watch" | "quality" | "time")} aria-label="Sort games">
+            <option value="watch">Sort: watchability</option><option value="quality">Sort: team quality</option><option value="time">Sort: schedule order</option>
+          </select>
         </div>
       </div>
       {offseason && !sp.get("date") && (
@@ -138,12 +162,12 @@ export default function TodayView() {
       )}
       {top.length > 0 && (
         <section className="mb-6">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wider text-muted">Top matchups (by average team rating)</h2>
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wider text-muted">Most watchable games</h2>
           <div className="grid grid-cols-4 gap-3">
             {top.map((g) => (
               <div key={g.id} className="card flex items-center justify-between gap-2 px-3 py-2">
                 <div className="flex items-center gap-1.5"><TeamLogo team={map.get(g.a)} size={26} /><span className="text-xs text-faint">@</span><TeamLogo team={map.get(g.h)} size={26} /></div>
-                <div className="truncate text-right text-[13px]"><div>{map.get(g.a)?.abbr} @ {map.get(g.h)?.abbr}</div><div className="text-xs text-muted">{pct(g.p)} {map.get(g.h)?.abbr}</div></div>
+                <div className="truncate text-right text-[13px]"><div>{map.get(g.a)?.abbr} @ {map.get(g.h)?.abbr}</div><div className="text-xs text-muted"><span className="text-accent">{g.w?.toFixed(1)}</span> · {pct(g.p)} {map.get(g.h)?.abbr}</div></div>
               </div>
             ))}
           </div>
@@ -157,7 +181,7 @@ export default function TodayView() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 2xl:grid-cols-4">
-          {list.map((g) => <GameCard key={g.id} g={g} map={map} q={qual.get(g.id)} />)}
+          {list.map((g) => <GameCard key={g.id} g={g} map={map} />)}
         </div>
       )}
     </div>

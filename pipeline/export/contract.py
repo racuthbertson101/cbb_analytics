@@ -11,6 +11,7 @@ import pandas as pd
 from pipeline.models.backtest import BT
 from pipeline.models.data import load_games
 from pipeline.models.engine import Context
+from pipeline.models import watchability as W
 from pipeline.models.production import Predictor, load_prod, ratings_asof
 from pipeline.warehouse.paths import ROOT, table_path
 
@@ -71,6 +72,11 @@ def export_all(asof_default: str | None = None):
     write("teams.json", {"version": CONTRACT_VERSION, "teams": teams})
     names = TM[["display_name", "short_name", "logo", "color"]].to_dict("index")
 
+    wp = ROOT / "pipeline" / "params" / "watchability.json"
+    if not wp.exists():
+        W.build_distributions()
+    wdist = json.loads(wp.read_text())["distributions"]
+
     # ---------- per season ----------
     cal = Predictor.__new__(Predictor)
     cal.sig, cal.gx, cal.gy = prod["sigma_coef"], np.array(prod["calibration_grid_x"]), np.array(prod["calibration_grid_y"])
@@ -103,6 +109,28 @@ def export_all(asof_default: str | None = None):
                                  "ph": d.score_a.values, "pa": d.score_b.values})
             pred["lo"], pred["hi"] = d.win_prob_lo.values, d.win_prob_hi.values
         g = g.merge(pred, on="game_id", how="left")
+        # watchability (pregame only): ratings as of each date, last-season star impact, title leverage from a standings simulation if present
+        star = W.star_table(y)
+        if y <= 2026:
+            ctx_w = W.rating_context(y, R)
+        else:
+            tb_ = r.table().set_index("team_id")
+            em_ = tb_.adj_off - tb_.adj_def
+            one = pd.DataFrame({"em": em_, "rank": em_.rank(ascending=False, method="first")})
+            ctx_w = {d: one for d in g.game_date.unique()}
+        title_p = None
+        sp_ = OUT / "standings" / f"{y}.json"
+        if sp_.exists():
+            snap0 = json.loads(sp_.read_text())["snapshots"][0]
+            pt = {r_["id"]: r_["p_title"] for c_ in snap0["conferences"].values() for r_ in c_["rows"]}
+            title_p = {}
+            for x in g[(g.game_date >= pd.Timestamp(snap0["asof"]))].itertuples():
+                title_p[(x.home_id, x.away_id)] = min(1.0, pt.get(x.home_id, 0) + pt.get(x.away_id, 0)) if x.conference_game else 0.0
+        raw = W.components_for_games(pd.DataFrame({"game_id": g.game_id, "d": g.game_date, "h": g.home_id, "a": g.away_id, "pm": g.pm, "pp": g.pp}), ctx_w, star, title_p)
+        ws = W.score(raw, wdist).set_index("game_id")
+        g["w"] = g.game_id.map(ws.score)
+        for k in ("quality", "competitiveness", "tempo", "star_power", "stakes"):
+            g["w_" + k] = g.game_id.map(ws[k])
         rows = []
         for r in g.sort_values(["game_date", "game_id"]).itertuples():
             rows.append({"id": r.game_id, "d": str(r.game_date.date()), "a": r.away_id, "h": r.home_id,
@@ -111,7 +139,9 @@ def export_all(asof_default: str | None = None):
                          "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p, "plo": r.lo, "phi": r.hi, "ph": r.ph, "pa": r.pa,
                          "ar": None if pd.isna(r.away_rank) or r.away_rank > 25 else int(r.away_rank),
                          "hr": None if pd.isna(r.home_rank) or r.home_rank > 25 else int(r.home_rank),
-                         "d1": bool(r.both_d1), "note": r.notes if isinstance(r.notes, str) else None})
+                         "d1": bool(r.both_d1), "note": r.notes if isinstance(r.notes, str) else None,
+                         "w": None if pd.isna(r.w) else round(float(r.w), 1),
+                         "wc": [None if pd.isna(v) else int(round(v)) for v in (r.w_quality, r.w_competitiveness, r.w_tempo, r.w_star_power, r.w_stakes)] if not pd.isna(r.w) else None})
         write(f"games/{y}.json", {"season": y, "games": rows})
 
         # ratings by date
@@ -128,6 +158,7 @@ def export_all(asof_default: str | None = None):
                 mats[k][ii, jj] = Ry[k].values
             write(f"ratings/{y}.json", {"season": y, "dates": [str(pd.Timestamp(d).date()) for d in dates], "teams": teams_y,
                                         "off": [r1(x) for x in mats["adj_off"]], "def": [r1(x) for x in mats["adj_def"]],
+                                        "mu": [round(float(Ry[Ry.date == d_].mu.iloc[0]), 2) for d_ in dates], "hca": [round(float(Ry[Ry.date == d_].hca.iloc[0]), 3) for d_ in dates],
                                         "tempo": [r1(x) for x in mats["adj_tempo"]], "gp": [[None if np.isnan(v) else int(v) for v in x] for x in mats["n_games"]]})
             fin = Ry[Ry.date == dates[-1]].set_index("team_id")
             # rankings table (final state) with record, SOS, luck
@@ -182,7 +213,7 @@ def export_all(asof_default: str | None = None):
         else:
             r = ratings_asof(ctx, 2027, pd.Timestamp("2026-10-01"), prod)
             t = r.table()
-            write("ratings/2027_preseason.json", {"season": 2027, "teams": t.team_id.tolist(), "off": r1(t.adj_off), "def": r1(t.adj_def),
+            write("ratings/2027_preseason.json", {"season": 2027, "mu": round(float(r.mu), 2), "hca": round(float(r.hca), 3), "teams": t.team_id.tolist(), "off": r1(t.adj_off), "def": r1(t.adj_def),
                                                   "tempo": r1(t.adj_tempo)})
 
     cur = max(y for y in seasons if y <= 2026)
@@ -190,6 +221,17 @@ def export_all(asof_default: str | None = None):
                         "seasons": [y for y in seasons if y <= 2026], "last_game_date": last_dates[cur],
                         "default_asof": last_dates[cur], "current_last_date": str(pd.read_parquet(table_path("games", cur)).game_date.max().date()), "season_first_date": str(pd.read_parquet(table_path("games", cur)).game_date.min().date()), "generated": pd.Timestamp.now("UTC").isoformat()})
     write("tournament.json", {"status": "coming_soon", "brackets": []})
+    write("params/predict.json", {"sigma_coef": prod["sigma_coef"], "cal_x": prod["calibration_grid_x"][::5], "cal_y": prod["calibration_grid_y"][::5],
+                                  "q10": prod["margin_residual_quantiles"]["0.1"], "q90": prod["margin_residual_quantiles"]["0.9"],
+                                  "score_q10": prod["score_residual_quantiles"]["0.1"], "score_q90": prod["score_residual_quantiles"]["0.9"]})
+    # search index: teams and current-season players
+    pl_ = json.loads((OUT / "players" / f"{cur}.json").read_text()) if (OUT / "players" / f"{cur}.json").exists() else None
+    idx = {"teams": [[x["id"], x["name"], x["abbr"], (x["conf"].get(str(cur)) or "")] for x in teams], "season": cur, "players": []}
+    if pl_:
+        c_ = pl_["cols"]
+        rows_ = sorted(pl_["rows"], key=lambda r_: -(r_[c_.index("min")] or 0))[:3500]
+        idx["players"] = [[r_[c_.index("id")], r_[c_.index("name")], r_[c_.index("tid")], r_[c_.index("pos")]] for r_ in rows_]
+    write("search.json", idx)
     # methodology inputs
     for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json"):
         src = ROOT / "pipeline" / "params" / name

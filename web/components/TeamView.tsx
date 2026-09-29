@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Game, Ratings, useJson, useMeta, useTeams } from "@/lib/data";
+import { Game, Ratings, loadJson, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, heat, pct, percentiles, prettyDate, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import { usePlayers } from "@/lib/players";
@@ -72,6 +72,20 @@ export default function TeamView({ id }: { id: string }) {
   const past = useMemo(() => games.filter((g) => g.ok), [games]);
   const rest = useMemo(() => games.filter((g) => !g.ok), [games]);
 
+  const [hist, setHist] = useState<{ s: number; w: number; l: number; cw: number; cl: number; margin: number; rank: number; conf: string }[]>([]);
+  useEffect(() => {
+    if (!meta) return;
+    Promise.all(meta.seasons.map((s) => loadJson<RankRows>(`rankings/${s}.json`).then((d) => ({ s, d })).catch(() => null))).then((all) => {
+      const out: typeof hist = [];
+      for (const x of all) {
+        if (!x) continue;
+        const rows = [...x.d.rows].sort((a, b) => b.margin - a.margin);
+        const k = rows.findIndex((r) => r.id === id);
+        if (k >= 0) out.push({ s: x.s, w: rows[k].w, l: rows[k].l, cw: rows[k].cw, cl: rows[k].cl, margin: rows[k].margin, rank: k + 1, conf: rows[k].conf });
+      }
+      setHist(out.reverse());
+    });
+  }, [meta, id]);
   const PL = usePlayers(season && !upcoming ? season : null);
   const roster = useMemo(() => (PL?.rows ?? []).filter((r) => r.tid === id).sort((a, b) => (b.min as number) - (a.min as number)), [PL, id]);
   const seasons = [...(meta?.seasons ?? []), ...(meta ? [meta.upcoming_season] : [])].reverse();
@@ -210,6 +224,15 @@ export default function TeamView({ id }: { id: string }) {
                 <td>{r.gp}</td><td>{fmt(r.mpg as number, 1)}</td><td>{fmt(r.ppg as number, 1)}</td><td>{fmt(r.rpg as number, 1)}</td><td>{fmt(r.apg as number, 1)}</td>
                 <td>{r.ts == null ? "–" : fmt((r.ts as number) * 100, 1)}</td><td>{fmt(r.usg as number, 1)}</td>
                 <td><span className="block rounded px-1.5" style={{ background: heat(r.pc_imp as number | null) }}>{signed(r.imp as number, 1)}</span></td></tr>))}</tbody></table></div>
+        </div>
+      )}
+      {hist.length > 0 && (
+        <div className="card mb-6 overflow-hidden">
+          <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Previous seasons</h2>
+          <div className="p-2"><table className="dense"><thead><tr>{th("Season", true)}{th("Conference", true)}{th("W-L")}{th("Conf")}{th("AdjEM")}{th("Rank")}</tr></thead>
+            <tbody>{hist.map((h) => (
+              <tr key={h.s}><td className="l"><Link className="hover:text-accent" href={`/team/${id}/?season=${h.s}`}>{seasonLabel(h.s)}</Link></td><td className="l text-muted">{shortConf(h.conf)}</td>
+                <td>{h.w}-{h.l}</td><td>{h.cw}-{h.cl}</td><td>{signed(h.margin, 1)}</td><td>{h.rank}</td></tr>))}</tbody></table></div>
         </div>
       )}
       <p className="text-xs text-faint">Predictions shown are the pregame values from the walk-forward model (no knowledge of the result). Player impact is a fitted box-score rating (see Methodology).</p>

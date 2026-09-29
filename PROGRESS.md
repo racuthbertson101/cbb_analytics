@@ -1,7 +1,7 @@
 ﻿# Progress
 
-Last completed step: Phase 6 - conference stats, tiebreaker engine + 31 researched configs (19 verified, 12 fallback), Monte Carlo standings sims (20k), Conferences + Conference pages
-Next step: Phase 7 - watchability, predictions/accuracy log page, compare page, history/search (command palette)
+Last completed step: Phase 7 - watchability (config/watchability.yaml), append-only prediction log + Accuracy page, Compare page, Ctrl+K search, team previous seasons
+Next step: Phase 8 - automation: nightly.yml, refit.yml, incremental ESPN ingest, replay test, README, docs/METHODS.md + EXTENDING.md, tournament stub
 Blockers: GitHub public repo creation denied (see KNOWN_ISSUES.md). Continue locally.
 
 ## Checklist

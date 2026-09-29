@@ -1,0 +1,16 @@
+# Game watchability weights.
+# JUDGMENT CALL: there is no ground truth for "how watchable" a game is, so these weights are chosen by hand, not fitted.
+# Each component is first scaled to 0-100 by its percentile in the historical distribution of D-I games (2010-2026), so the
+# scaling is data derived; only the weights below are subjective. Stakes sub-weights are also judgment calls.
+# The final score is 1 + 9 * (weighted average of component percentiles / 100), i.e. a 1 to 10 scale.
+weights:
+  quality: 0.30        # average adjusted efficiency margin of the two teams
+  competitiveness: 0.25  # predicted closeness (small |predicted margin|)
+  tempo: 0.10          # predicted possessions
+  star_power: 0.10     # best player impact on either team
+  stakes: 0.25         # ranking proximity, conference title leverage, bubble proximity
+stakes_weights:
+  rank_proximity: 0.35   # both teams good and close in rank
+  title_leverage: 0.40   # conference games between title contenders (needs a standings simulation; dropped when unavailable)
+  bubble_proximity: 0.25 # both teams near the at-large bubble (rank BUBBLE_RANK in our rating)
+# If a component is unavailable for a game (for example title leverage), its weight is redistributed proportionally.

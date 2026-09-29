@@ -40,7 +40,7 @@ export type Meta = { version: number; current_season: number; upcoming_season: n
 export type Game = {
   id: string; d: string; a: string; h: string; as: number | null; hs: number | null; n: boolean; t: string; cg: boolean; ok: boolean;
   pm: number | null; pp: number | null; p: number | null; plo: number | null; phi: number | null; ph: number | null; pa: number | null;
-  ar: number | null; hr: number | null; d1: boolean; note: string | null;
+  ar: number | null; hr: number | null; d1: boolean; note: string | null; w: number | null; wc: (number | null)[] | null;
 };
 export type Ratings = { season: number; dates: string[]; teams: string[]; off: (number | null)[][]; def: (number | null)[][]; tempo: (number | null)[][]; gp: (number | null)[][] };
 
