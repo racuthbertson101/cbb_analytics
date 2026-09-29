@@ -40,7 +40,7 @@ jobs:
       - name: Install Python and site dependencies
         run: |
           uv sync
-          cd web && npm ci
+          cd web && npm install --no-audit --no-fund
       - name: Download warehouse tables, model artifacts and prediction log
         run: uv run python -m pipeline.release download
       - name: Nightly pipeline (ingest, validate, refit, predict, simulate, export, build)

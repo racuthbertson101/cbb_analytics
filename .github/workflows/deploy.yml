@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: uv sync && cd web && npm ci
+      - run: uv sync && cd web && npm install --no-audit --no-fund
       - run: uv run python -m pipeline.release download
       - run: |
           uv run python -m pipeline.export.conferences --stats
