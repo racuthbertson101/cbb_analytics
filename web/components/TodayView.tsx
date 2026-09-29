@@ -156,8 +156,14 @@ export default function TodayView() {
       {offseason && !sp.get("date") && (
         <div className="card mb-4 border-accent/40 px-4 py-3 text-[13px]">
           <span className="font-medium text-accent">Offseason.</span>{" "}
-          <span className="text-muted">Showing the final day of the last completed season ({seasonEndDay ? prettyDate(seasonEndDay) : ""}). {meta?.upcoming_first_date ? <>The next season opens {prettyDate(meta.upcoming_first_date)}.</> : null}</span>{" "}
-          {meta?.upcoming_first_date && <button className="text-accent underline" onClick={() => go(meta.upcoming_first_date as string)}>See opening-night predictions</button>}
+          <span className="text-muted">
+            {meta?.upcoming_first_date && day === meta.upcoming_first_date
+              ? <>Showing opening night of the next season with preseason-based predictions (last two seasons plus roster changes).</>
+              : <>Showing the final day of the last completed season ({seasonEndDay ? prettyDate(seasonEndDay) : ""}).</>}
+          </span>{" "}
+          {meta?.upcoming_first_date && day === meta.upcoming_first_date
+            ? <button className="text-accent underline" onClick={() => go(meta.last_game_date)}>See the last completed day</button>
+            : meta?.upcoming_first_date && <button className="text-accent underline" onClick={() => go(meta.upcoming_first_date as string)}>See opening-night predictions</button>}
         </div>
       )}
       {top.length > 0 && (

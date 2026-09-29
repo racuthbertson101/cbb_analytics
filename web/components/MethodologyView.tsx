@@ -9,7 +9,7 @@ type BT = {
   reliability: { bin: number; mean_pred: number; obs: number; n: number }[]; buckets: { bucket: string; n: number; mean_conf: number; accuracy: number }[];
   by_season: Record<string, { adjeff: Sys; home: Sys; elo: Sys; prev: Sys }>; seasons_beating_home: number; ncaa_tournament: Sys;
 };
-type Prod = { config: Record<string, number | null>; sigma_coef: number[]; prior_coefs_current: Record<string, number[]>; margin_residual_quantiles: Record<string, number> };
+type Prod = { config: Record<string, number | null>; sigma_coef: number[]; prior_coefs_current: Record<string, number[]> & { roster?: Record<string, { cols: string[]; beta: number[]; window: number }> }; margin_residual_quantiles: Record<string, number> };
 type PlayersP = {
   alpha: number; shrink_k_minutes: number; within_season_r2_offense: number; within_season_r2_defense: number; decision: string;
   model: { offense_coef: Record<string, number>; defense_coef: Record<string, number> };
@@ -63,6 +63,9 @@ export default function MethodologyView() {
               <tr><td className="l">Tempo half-life (days)</td><td>{prod.config.halflife_t}</td><td className="l">walk-forward grid</td></tr>
               <tr><td className="l">Preseason prior: offense coefs (last, two ago)</td><td>{prod.prior_coefs_current.o.map((x) => x.toFixed(3)).join(", ")}</td><td className="l">regression of final ratings on the prior two seasons&apos; finals</td></tr>
               <tr><td className="l">Preseason prior: defense coefs</td><td>{prod.prior_coefs_current.d.map((x) => x.toFixed(3)).join(", ")}</td><td className="l">same</td></tr>
+              {prod.prior_coefs_current.roster && (["o", "d"] as const).map((k) => (
+                <tr key={k}><td className="l">Roster prior ({k === "o" ? "offense" : "defense"}): intercept, last, two-ago, returning impact, incoming impact, returning minutes share, incoming share</td>
+                  <td>{prod.prior_coefs_current.roster![k].beta.map((x) => x.toFixed(2)).join(", ")}</td><td className="l">regression on prior seasons, adopted after walk-forward cross validation (see Player impact)</td></tr>))}
               <tr><td className="l">Preseason prior: tempo coefs</td><td>{prod.prior_coefs_current.t.map((x) => x.toFixed(3)).join(", ")}</td><td className="l">same</td></tr>
               <tr><td className="l">Margin spread σ (base, per possession above 68)</td><td>{prod.sigma_coef[0].toFixed(2)}, {prod.sigma_coef[1].toFixed(3)}</td><td className="l">mean absolute historical residual, linear in predicted tempo</td></tr>
               <tr><td className="l">FTA weight in possession estimate</td><td>{poss ? poss.fta_coef.toFixed(3) : "–"}</td><td className="l">value that makes both teams&apos; possession estimates agree ({poss?.n_team_games.toLocaleString()} team-games)</td></tr>

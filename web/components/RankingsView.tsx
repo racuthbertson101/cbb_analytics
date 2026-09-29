@@ -29,9 +29,12 @@ export default function RankingsView() {
   const sp = useSearchParams();
   const router = useRouter();
   const season = Number(sp.get("season")) || meta?.current_season || 0;
-  const { data: R } = useJson<Ratings>(season ? `ratings/${season}.json` : null);
-  const { data: G } = useJson<{ games: Game[] }>(season ? `games/${season}.json` : null);
-  const { data: SY } = useJson<Sys>(season ? `systems/${season}.json` : null);
+  const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
+  const confSeason = upcoming ? season - 1 : season;
+  const { data: R } = useJson<Ratings>(meta && season && !upcoming ? `ratings/${season}.json` : null);
+  const { data: G } = useJson<{ games: Game[] }>(meta && season && !upcoming ? `games/${season}.json` : null);
+  const { data: SY } = useJson<Sys>(meta && season && !upcoming ? `systems/${season}.json` : null);
+  const { data: PRE } = useJson<{ teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[] }>(upcoming ? `ratings/${season}_preseason.json` : null);
   const sys = sp.get("sys") || "adj";
   const view = sp.get("view") || "ratings";
   const lastDate = R?.dates[R.dates.length - 1];
@@ -46,10 +49,15 @@ export default function RankingsView() {
     setSorting([{ id: view === "resume" ? "wab" : "rank", desc: view === "resume" }]);
   }
 
-  const d1 = useMemo(() => new Set((teams ?? []).filter((t) => t.conf[String(season)]).map((t) => t.id)), [teams, season]);
+  const d1 = useMemo(() => new Set((teams ?? []).filter((t) => t.conf[String(confSeason)]).map((t) => t.id)), [teams, confSeason]);
   const rows: R[] = useMemo(() => {
-    if (!R || !G || !teams) return [];
-    let base = computeRankings(R, G.games, asof, d1);
+    if (upcoming ? !PRE || !teams : !R || !G || !teams) return [];
+    let base: Row[];
+    if (upcoming && PRE) {
+      const arr = PRE.teams.map((id, j) => ({ id, off: PRE.off[j], def: PRE.def[j], tempo: PRE.tempo[j] })).filter((x) => x.off != null && x.def != null && d1.has(x.id));
+      arr.sort((a, b) => (b.off as number) - (b.def as number) - ((a.off as number) - (a.def as number)));
+      base = arr.map((x, k) => ({ id: x.id, rank: k + 1, rankPrev: null, w: 0, l: 0, cw: 0, cl: 0, off: x.off as number, def: x.def as number, margin: (x.off as number) - (x.def as number), tempo: (x.tempo ?? NaN) as number, sos: null, luck: null, trend: [] }));
+    } else base = computeRankings(R as Ratings, (G as { games: Game[] }).games, asof, d1);
     const si = SY ? dateIndex(SY.dates, asof) : -1;
     const col = (k: string, i: number, id: string) => {
       const j = SY ? SY.teams.indexOf(id) : -1;
@@ -77,11 +85,11 @@ export default function RankingsView() {
       rating: sys === "adj" ? (r.margin * ((SY?.poss as number) ?? 68.5)) / 100 : col(sys, si, r.id),
       mrank: col("mrank", si, r.id), wab: col("wab", si, r.id), sor: col("sor", si, r.id), ncsos: col("ncsos", si, r.id),
       q: ["q1w", "q1l", "q2w", "q2l", "q3w", "q3l", "q4w", "q4l"].map((k) => col(k, si, r.id)),
-      conf: shortConf(map.get(r.id)?.conf[String(season)]),
+      conf: shortConf(map.get(r.id)?.conf[String(confSeason)]),
       team: map.get(r.id)?.name ?? r.id,
       heat: { off: ps.off[i], def: ps.def[i], margin: ps.margin[i], sos: ps.sos[i], luck: ps.luck[i] },
     }));
-  }, [R, G, teams, asof, d1, map, season, SY, sys]);
+  }, [R, G, PRE, upcoming, teams, asof, d1, map, confSeason, SY, sys]);
 
   const confs = useMemo(() => ["All", ...Array.from(new Set(rows.map((r) => r.conf))).filter(Boolean).sort()], [rows]);
   const data = useMemo(
@@ -167,7 +175,7 @@ export default function RankingsView() {
     data, columns, state: { sorting }, onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), sortDescFirst: true,
   });
-  const loading = !R || !G || !teams;
+  const loading = upcoming ? !PRE || !teams : !R || !G || !teams;
   const histIdx = R && asof ? dateIndex(R.dates, asof) : -1;
 
   return (
@@ -176,7 +184,7 @@ export default function RankingsView() {
         <div>
           <h1 className="text-3xl font-semibold">Rankings</h1>
           <p className="mt-1 text-muted">
-            Adjusted efficiency (points per 100 possessions vs an average D-I team). {seasonLabel(season || 2026)} · as of {asof ? prettyDate(asof) : "…"}
+            Adjusted efficiency (points per 100 possessions vs an average D-I team). {seasonLabel(season || 2026)} · {upcoming ? "preseason projection (last two seasons plus roster changes)" : <>as of {asof ? prettyDate(asof) : "…"}</>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -189,14 +197,15 @@ export default function RankingsView() {
               router.replace(`?${p}`, { scroll: false });
             }}
           >
-            {(meta?.seasons ?? []).slice().reverse().map((s) => (
-              <option key={s} value={s}>{seasonLabel(s)}</option>
+            {[...(meta?.seasons ?? []), ...(meta?.upcoming_season ? [meta.upcoming_season] : [])].reverse().map((s) => (
+              <option key={s} value={s}>{seasonLabel(s)}{s === meta?.upcoming_season ? " (preseason)" : ""}</option>
             ))}
           </select>
-          <input
+          {!upcoming && (<input
             type="date" value={asof} min={R?.dates[0]} max={lastDate} aria-label="As of date"
             onChange={(e) => setParam("asof", e.target.value && e.target.value !== lastDate ? e.target.value : null)}
-          />
+          />)}
+          {!upcoming && (<>
           <select value={sys} onChange={(e) => setParam("sys", e.target.value === "adj" ? null : e.target.value)} aria-label="Ranking system">
             {SYSTEMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
@@ -205,6 +214,7 @@ export default function RankingsView() {
               <button key={k} onClick={() => setParam("view", k === "ratings" ? null : k)} className={`px-3 py-1.5 ${view === k ? "bg-surface2 text-ink" : "text-muted"}`}>{l}</button>
             ))}
           </div>
+          </>)}
           <select value={conf} onChange={(e) => setConf(e.target.value)}>
             {confs.map((c) => <option key={c}>{c}</option>)}
           </select>

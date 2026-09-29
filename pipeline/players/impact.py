@@ -27,10 +27,17 @@ def load_ps(y: int) -> pd.DataFrame:
 
 
 def team_targets() -> pd.DataFrame:
+    """End-of-season adjusted ratings used as regression targets. Frozen in impact_targets.parquet (created from the lag-only-prior
+    model) so the impact model does not depend on ratings that themselves use the roster prior (no feedback loop)."""
+    p = BT / "impact_targets.parquet"
+    if p.exists():
+        return pd.read_parquet(p)
     R = pd.read_parquet(BT / "adjeff_ratings.parquet")
     last = R.groupby("season").date.transform("max")
     R = R[R.date == last]
-    return R[["season", "team_id", "adj_off", "adj_def", "adj_tempo"]]
+    F = R[["season", "team_id", "adj_off", "adj_def", "adj_tempo"]]
+    F.to_parquet(p)
+    return F
 
 
 class ImpactModel:

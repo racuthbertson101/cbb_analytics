@@ -32,11 +32,11 @@ export default function TeamView({ id }: { id: string }) {
   const team = map.get(id);
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
-  const { data: R } = useJson<Ratings>(season && !upcoming ? `ratings/${season}.json` : null);
+  const { data: R } = useJson<Ratings>(meta && season && !upcoming ? `ratings/${season}.json` : null);
   const { data: PRE } = useJson<Pre>(upcoming ? `ratings/${season}_preseason.json` : null);
   const { data: G } = useJson<{ games: Game[] }>(season ? `games/${season}.json` : null);
-  const { data: S } = useJson<Stats>(season && !upcoming ? `teamstats/${season}.json` : null);
-  const { data: RK } = useJson<RankRows>(season && !upcoming ? `rankings/${season}.json` : null);
+  const { data: S } = useJson<Stats>(meta && season && !upcoming ? `teamstats/${season}.json` : null);
+  const { data: RK } = useJson<RankRows>(meta && season && !upcoming ? `rankings/${season}.json` : null);
 
   const snap = useMemo(() => {
     let teams: string[], off: (number | null)[], def: (number | null)[], tempo: (number | null)[];
@@ -87,7 +87,7 @@ export default function TeamView({ id }: { id: string }) {
       setHist(out.reverse());
     });
   }, [meta, id]);
-  const PL = usePlayers(season && !upcoming ? season : null);
+  const PL = usePlayers(meta && season && !upcoming ? season : null);
   const roster = useMemo(() => (PL?.rows ?? []).filter((r) => r.tid === id).sort((a, b) => (b.min as number) - (a.min as number)), [PL, id]);
   const { data: SH } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/${id}.json` : null);
   const { data: SHL } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/league.json` : null);
@@ -143,7 +143,7 @@ export default function TeamView({ id }: { id: string }) {
         </select>
       </div>
 
-      {upcoming && <div className="card mb-4 px-4 py-3 text-[13px] text-muted">Preseason projection: ratings come from last season and the fitted prior only (no {seasonLabel(season)} games played yet).</div>}
+      {upcoming && <div className="card mb-4 px-4 py-3 text-[13px] text-muted">Preseason projection: ratings come from the last two seasons plus returning and incoming players (their impact and minutes), through a fitted prior. No {seasonLabel(season)} games have been played yet.</div>}
 
       <div className="mb-6 grid grid-cols-4 gap-4">
         {snap ? (<>

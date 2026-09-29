@@ -20,7 +20,7 @@ Margin-aware Elo (Gaussian maximum likelihood), results-only Bradley-Terry (ridg
 
 ## Players
 
-Per-player rates use ratio-of-sums with team totals. Impact v1 regresses team adjusted offense/defense on minutes-weighted player rate features; low-minute players are shrunk. Whether a roster-based preseason prior beats the ratings-only prior was tested by walk-forward cross validation and rejected. RAPM from play-by-play is a stretch item.
+Per-player rates use ratio-of-sums with team totals. Impact v1 regresses team adjusted offense/defense on minutes-weighted player rate features; low-minute players are shrunk. A roster-based preseason prior (returning and incoming players, from their previous-season impact and minutes) was tested against the ratings-only prior by walk-forward cross validation and adopted. RAPM from play-by-play is a stretch item.
 
 ## Conferences
 

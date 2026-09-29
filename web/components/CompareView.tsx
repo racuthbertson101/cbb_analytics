@@ -27,7 +27,7 @@ export default function CompareView() {
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
   const a = sp.get("a") || "130", b = sp.get("b") || "150", site = Number(sp.get("site") ?? "0");
-  const { data: R } = useJson<Ratings & { mu: number[]; hca: number[] }>(season && !upcoming ? `ratings/${season}.json` : null);
+  const { data: R } = useJson<Ratings & { mu: number[]; hca: number[] }>(meta && season && !upcoming ? `ratings/${season}.json` : null);
   const { data: PRE } = useJson<Pre>(upcoming ? `ratings/${season}_preseason.json` : null);
   const { data: PP } = useJson<Pred>("params/predict.json");
   const set = (k: string, v: string) => { const p = new URLSearchParams(sp.toString()); p.set(k, v); router.replace(`?${p}`, { scroll: false }); };
