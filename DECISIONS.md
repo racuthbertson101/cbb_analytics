@@ -8,3 +8,5 @@ Log of ambiguous choices: date, decision, reason.
 - 2026-09-28: Season convention: season = year the season ends.
 - 2026-09-29: Ridge lam, recency, blowout cap, team-specific HCA, tempo lam chosen by walk-forward grids (pipeline/models/tune.py). Team-specific HCA rejected; calibration chosen by walk-forward log loss (Platt). Minor limitation: tempo config in efficiency grid was fixed at (2,60); burn-in seasons 2010-11 configs chosen with seasons<2012.
 - BLAS threads pinned to 1 (pipeline/__init__.py, conftest.py): 1000x speedup.
+- 2026-09-29: Conference tiebreaker status = verified only if the ordered rule text was found on an official conference page (19 of 31); others fallback with best-known rules. NET/RPI steps replaced by our rating (labeled). Tournament field sizes taken from 2026 data/known format (config values, not verified).
+- Standings sims are produced for replay snapshots (2026-02-15 + final); the nightly job will sim the live date with 20,000 sims.

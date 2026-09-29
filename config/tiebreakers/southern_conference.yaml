@@ -1,0 +1,14 @@
+conference: Southern Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 10
+bye_seed_lines: []
+source_url: http://www.soconsports.com/ViewArticle.dbml?ATCLID=211507238&DB_OEM_ID=4000
+researched: '2026-09-29'
+notes: 'Excerpt only: h2h, records vs individual teams top down, NET.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

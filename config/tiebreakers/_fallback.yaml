@@ -1,0 +1,12 @@
+conference: _fallback
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 8
+bye_seed_lines: []
+source_url: null
+notes: 'Generic rules for any conference without a config: head to head, record against
+  the top of the standings in order, then random.'

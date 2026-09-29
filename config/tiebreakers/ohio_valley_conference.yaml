@@ -1,0 +1,14 @@
+conference: Ohio Valley Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 8
+bye_seed_lines: []
+source_url: https://ovcsports.com/news/2024/1/4/mens-womens-basketball-tiebreaker.aspx
+researched: '2026-09-29'
+notes: Ties higher in the standings are broken first; final alternative is a coin
+  toss.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

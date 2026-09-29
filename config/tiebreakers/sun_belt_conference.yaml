@@ -1,0 +1,13 @@
+conference: Sun Belt Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 14
+bye_seed_lines: []
+source_url: https://sunbeltsports.org/news/2024/2/23/mens-basketball-sun-belt-basketball-championship-seeding-tiebreakers.aspx
+researched: '2026-09-29'
+notes: Final step is a commissioner draw.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

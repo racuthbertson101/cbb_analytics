@@ -1,0 +1,13 @@
+conference: Mid-Eastern Athletic Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 7
+bye_seed_lines: []
+source_url: https://en.wikipedia.org/wiki/2026_MEAC_men%27s_basketball_tournament
+researched: '2026-09-29'
+notes: Official tiebreaker text not found; generic fallback.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,14 @@
+conference: American Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 14
+bye_seed_lines: []
+source_url: https://theamerican.org/documents/2024/3/3/2024_Basketball_Tiebreakers.pdf
+researched: '2026-09-29'
+notes: 'Excerpt: head-to-head, then record vs highest-ranked team outside the tie,
+  descending.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

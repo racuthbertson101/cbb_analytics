@@ -1,0 +1,14 @@
+conference: Southwestern Athletic Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- h2h_point_diff
+- vs_standings
+- random
+qualifiers: 12
+bye_seed_lines: []
+source_url: https://swac.org/sports/2021/11/10/MBB_1110212613.aspx
+researched: '2026-09-29'
+notes: Point differential between the tied teams if the season series is split.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,14 @@
+conference: Big Sky Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 10
+bye_seed_lines: []
+source_url: https://static.bigskyconf.com/custompages/Code14-15/Basketball%20-%20Men's%20Championship.pdf
+researched: '2026-09-29'
+notes: 2014-15 policy (RPI then coin flip); RPI replaced by our rating.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,15 @@
+conference: Patriot League
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 10
+bye_seed_lines: []
+source_url: https://patriotleague.org/sports/2022/1/1/GEN_0101223737.aspx?path=general
+researched: '2026-09-29'
+notes: 'After NET: winning pct vs common non-league opponents (not modeled; cannot
+  separate our simulated conference schedule).'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

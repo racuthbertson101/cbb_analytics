@@ -1,0 +1,15 @@
+conference: West Coast Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 12
+bye_seed_lines: []
+source_url: https://wccsports.com/news/2026/2/25/bracket-announced-for-2026-credit-union-1-west-coast-conference-mens-basketball-championship.aspx
+researched: '2026-09-29'
+notes: 'Reported: record vs top seed outside tie, then NET; 3+ teams use a head-to-head
+  pod. Official rule text not retrieved.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,14 @@
+conference: Missouri Valley Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- rating
+- random
+qualifiers: 11
+bye_seed_lines: []
+source_url: https://mvc-sports.com/news/2018/12/18/arch-madness-revises-tiebreaker.aspx
+researched: '2026-09-29'
+notes: 'Two-way: h2h then NET; 3+: cumulative record vs the other tied teams, reduce
+  to two-way.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

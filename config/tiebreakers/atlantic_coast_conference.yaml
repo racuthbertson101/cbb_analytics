@@ -1,0 +1,15 @@
+conference: Atlantic Coast Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 15
+bye_seed_lines:
+- 4
+source_url: https://theacc.com/mbbseeding
+researched: '2026-09-29'
+notes: 'Two-team: h2h, record vs highest common opponent down the standings, coin
+  flip. 3+: mini-conference h2h, then vs standings, restart on partial split.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

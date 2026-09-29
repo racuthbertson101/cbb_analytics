@@ -1,0 +1,16 @@
+conference: Big 12 Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- road_pct
+- road_vs_standings
+- random
+qualifiers: 16
+bye_seed_lines:
+- 4
+source_url: https://big12sports.com/sports/2011/6/22/1520897.aspx
+researched: '2026-09-29'
+notes: Document last updated 2015-16. Final step is a public draw.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,4 @@
+{
+ "total_sd": 17.170508277013077,
+ "note": "sd of (actual total - predicted total) over the walk-forward backtest"
+}

@@ -1,0 +1,15 @@
+conference: Northeast Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 8
+bye_seed_lines: []
+source_url: https://en.wikipedia.org/wiki/2026_NEC_men%27s_basketball_tournament
+researched: '2026-09-29'
+notes: 'Official NEC procedure (2021) cited on Wikipedia: h2h, records vs individual
+  teams top down, NET; page not retrieved.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

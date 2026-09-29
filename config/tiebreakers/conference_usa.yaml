@@ -1,0 +1,13 @@
+conference: Conference USA
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 10
+bye_seed_lines: []
+source_url: https://conferenceusa.com/news/2001/2/16/C_USA_Announces_Basketball_Tiebreaker.aspx
+researched: '2026-09-29'
+notes: Only a 2001 divisional-era policy found; generic fallback.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

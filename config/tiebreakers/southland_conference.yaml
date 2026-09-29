@@ -1,0 +1,14 @@
+conference: Southland Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 8
+bye_seed_lines: []
+source_url: https://www.southland.org/sports/2017/1/31/2017_BB_TB.aspx
+researched: '2026-09-29'
+notes: Recent seasons replace the RPI step with NET; coin flip last.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

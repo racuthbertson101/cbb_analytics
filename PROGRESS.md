@@ -1,7 +1,7 @@
 ﻿# Progress
 
-Last completed step: Phase 5 - Elo MLE, Bradley-Terry, resume metrics (WAB/SOR/quads), player-driven, NNLS consensus; Rankings page system toggle + resume view
-Next step: Phase 6 - conferences: conference stats/rankings, tiebreaker engine (config/tiebreakers/*.yaml with researched rules), Monte Carlo standings sim, pages
+Last completed step: Phase 6 - conference stats, tiebreaker engine + 31 researched configs (19 verified, 12 fallback), Monte Carlo standings sims (20k), Conferences + Conference pages
+Next step: Phase 7 - watchability, predictions/accuracy log page, compare page, history/search (command palette)
 Blockers: GitHub public repo creation denied (see KNOWN_ISSUES.md). Continue locally.
 
 ## Checklist
@@ -18,7 +18,7 @@ Blockers: GitHub public repo creation denied (see KNOWN_ISSUES.md). Continue loc
 - [x] Phase 3 (local): Vertical slice; `next build` passes (376 pages, 60 MB out); live URL not possible without repo -> KNOWN_ISSUES
 - [x] Phase 4: Players (impact v1 in-sample R2 off 0.71 / def 0.44; roster prior rejected by CV; see params/players.json)
 - [x] Phase 5: More ranking systems. Test 2015-26 margin MAE: adjeff 9.019, Elo 9.006, BT 9.378, prev 9.957, consensus 8.947 (weights adjeff .47 elo .50 bt 0 prev .02); consensus logloss .5293 vs adjeff .5325
-- [ ] Phase 6: Conferences
+- [x] Phase 6: Conferences (tests pass: tiebreak scenarios incl. 3-team tie, sim sanity; sims run for 2026 at 2026-02-15 and final)
 - [ ] Phase 7: Watchability, accuracy, remaining pages
 - [ ] Phase 8: Automation and extension points
 - [ ] Phase 9: Stretch

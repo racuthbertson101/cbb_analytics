@@ -1,0 +1,14 @@
+conference: Coastal Athletic Association
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 13
+bye_seed_lines: []
+source_url: https://caasports.com/sports/2022/2/25/MBB_0225223020.aspx
+researched: '2026-09-29'
+notes: 3+ teams viewed as a mini-conference; all teams (eligible or not) are seeded.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

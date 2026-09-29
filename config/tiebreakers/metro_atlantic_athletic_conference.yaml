@@ -1,0 +1,13 @@
+conference: Metro Atlantic Athletic Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 10
+bye_seed_lines: []
+source_url: https://maacsports.com/sports/2018/1/31/MBKB_0131185303.aspx
+researched: '2026-09-29'
+notes: '3+ teams: mini-conference; final step coin toss.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

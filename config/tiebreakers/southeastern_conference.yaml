@@ -1,0 +1,15 @@
+conference: Southeastern Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 16
+bye_seed_lines:
+- 4
+source_url: https://www.secsports.com/article/11098238/tournament-tiebreakers
+researched: '2026-09-29'
+notes: 'Two-team: h2h, then vs highest-seeded common opponent down, then coin flip.
+  3+: h2h among group, then vs #1 seed down; reduce to two-team formula.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

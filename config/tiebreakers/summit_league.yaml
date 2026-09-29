@@ -1,0 +1,15 @@
+conference: Summit League
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 9
+bye_seed_lines: []
+source_url: http://www.thesummitleague.org/tournaments/sball/2016-17/tiebreakers
+researched: '2026-09-29'
+notes: Source text uses RPI as final step; replaced by our rating. Once broken, a
+  tie stays broken.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

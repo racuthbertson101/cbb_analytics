@@ -1,0 +1,15 @@
+conference: Atlantic Sun Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 12
+bye_seed_lines: []
+source_url: https://www.aseaofred.com/asun-has-new-tiebreaker-procedures-this-season/
+researched: '2026-09-29'
+notes: '2025 procedure per media excerpt: h2h, record vs top team(s) descending, NET;
+  partial splits restart.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

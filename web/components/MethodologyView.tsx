@@ -143,6 +143,10 @@ export default function MethodologyView() {
         </>)}
       </Section>
 
+      <Section title="Conference projections">
+        <p>Conference standings are simulated at least 20,000 times: completed conference games are fixed, and each remaining game is sampled as predicted margin plus normal noise (spread from the margin-spread model above) with a sampled total (noise sd from backtest residuals), rounded to integer scores so point-differential rules work. Each simulated final table is ordered with that conference&apos;s own tiebreaker rules (data files in <code>config/tiebreakers</code>), where a partially resolved multi-team tie restarts from the first rule for the teams still tied, and coin flips or draws are random. Steps that use NET or RPI use our adjusted-efficiency rating instead. Each conference is labeled <b className="text-ink">verified</b> (rule text found on an official conference page) or <b className="text-ink">fallback</b> (generic or best-known rules); see each conference page for its source link. Tournament field sizes are configuration values for the 2025-26 format. Best/worst possible finish uses win-count bounds.</p>
+      </Section>
+
       <Section title="Player impact rating (v1, box-score based)">
         <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. Impact is shrunk toward zero for low minutes (weight minutes / (minutes + k)).</p>
         {pl && (<>

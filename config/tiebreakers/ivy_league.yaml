@@ -1,0 +1,14 @@
+conference: Ivy League
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 4
+bye_seed_lines: []
+source_url: https://ivyleague.com/sports/2024/2/13/MBB_0213244341.aspx
+researched: '2026-09-29'
+notes: Top four qualify; ties for top four positions use these steps.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

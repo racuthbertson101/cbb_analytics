@@ -1,0 +1,14 @@
+conference: Big South Conference
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- random
+qualifiers: 9
+bye_seed_lines: []
+source_url: https://bigsouthsports.com/news/2015/7/2/MBB_0703150702844.aspx?path=mbball
+researched: '2026-09-29'
+notes: Teams with the same conference record are considered collectively when going
+  down the standings.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

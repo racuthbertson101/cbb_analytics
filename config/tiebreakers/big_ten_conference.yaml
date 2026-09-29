@@ -1,0 +1,16 @@
+conference: Big Ten Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 18
+bye_seed_lines:
+- 4
+source_url: https://nextgen.bigten.org/api/media/file/3f04bd9b-4db2-400d-b199-ec297bd5295c-2025_20B1G_20Basketball_20Tournament_20Tiebreakers.pdf
+researched: '2026-09-29'
+notes: First two steps (h2h, then record vs highest-placed team down the standings)
+  confirmed from the official PDF excerpt; later steps not retrieved (PDF unreadable).
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

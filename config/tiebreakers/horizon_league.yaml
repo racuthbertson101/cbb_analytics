@@ -1,0 +1,15 @@
+conference: Horizon League
+status: verified
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 11
+bye_seed_lines: []
+source_url: https://horizonleague.org/sports/2019/2/26/MBB_0226194917.aspx
+researched: '2026-09-29'
+notes: Ties broken top to bottom; tied teams considered as one entry when comparing
+  records.
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'

@@ -1,0 +1,15 @@
+conference: Mountain West Conference
+status: fallback
+restart_on_partial: true
+rules:
+- h2h
+- vs_standings
+- rating
+- random
+qualifiers: 12
+bye_seed_lines: []
+source_url: https://www.si.com/college/boise-state/basketball/mountain-west-men-basketball-tournament-tiebreaker-scenarios
+researched: '2026-09-29'
+notes: 'Source is a media article, not the conference page: h2h, record vs highest
+  seed outside the tie, then NET.'
+qualifiers_note: 'Tournament field size: best known 2025-26 format; verify each season.'
