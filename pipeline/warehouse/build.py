@@ -29,6 +29,11 @@ TEAM_STAT_RENAME = {
 BOX = ["fgm", "fga", "tpm", "tpa", "ftm", "fta", "orb", "drb", "trb", "ast", "stl", "blk", "tov", "pf"]
 
 
+def _idstr(s: pd.Series) -> pd.Series:
+    """Integer-valued IDs as clean strings (raw files sometimes store them as floats)."""
+    return pd.to_numeric(s, errors="coerce").astype("Int64").astype(str)
+
+
 def _rd(kind, fname):
     p = RAW / kind / fname
     return pd.read_parquet(p) if p.exists() else None
@@ -156,9 +161,9 @@ def build_season(y: int, d1_prev: set | None = None):
     pg = pd.DataFrame()
     pb = _rd("player_box", f"player_box_{y}.parquet")
     if pb is not None:
-        pb = pb.drop_duplicates(["game_id", "team_id", "athlete_id"]).copy()
+        pb = pb.dropna(subset=["athlete_id"]).drop_duplicates(["game_id", "team_id", "athlete_id"]).copy()
         for c in ["game_id", "team_id", "athlete_id"]:
-            pb[c] = pb[c].astype(str)
+            pb[c] = _idstr(pb[c])
         pg = pb[["game_id", "team_id", "athlete_id", "athlete_display_name", "minutes", "points", "field_goals_made",
                  "field_goals_attempted", "three_point_field_goals_made", "three_point_field_goals_attempted",
                  "free_throws_made", "free_throws_attempted", "offensive_rebounds", "defensive_rebounds", "rebounds",
@@ -177,7 +182,7 @@ def build_season(y: int, d1_prev: set | None = None):
 
     ro = _rd("rosters", f"rosters_{y}.parquet")
     if ro is not None:
-        ro = ro.assign(team_id=ro.team_id.astype(str), athlete_id=ro.athlete_id.astype(str))
+        ro = ro.dropna(subset=["athlete_id"]).assign(team_id=_idstr(ro.team_id), athlete_id=_idstr(ro.athlete_id))
         ro = ro[["season", "team_id", "athlete_id", "full_name", "jersey", "position_abbreviation", "height", "weight",
                  "experience_years", "experience_display_value", "date_of_birth", "headshot_href"]
                 ].drop_duplicates(["team_id", "athlete_id"])

@@ -10,6 +10,11 @@ type BT = {
   by_season: Record<string, { adjeff: Sys; home: Sys; elo: Sys; prev: Sys }>; seasons_beating_home: number; ncaa_tournament: Sys;
 };
 type Prod = { config: Record<string, number | null>; sigma_coef: number[]; prior_coefs_current: Record<string, number[]>; margin_residual_quantiles: Record<string, number> };
+type PlayersP = {
+  alpha: number; shrink_k_minutes: number; within_season_r2_offense: number; within_season_r2_defense: number; decision: string;
+  model: { offense_coef: Record<string, number>; defense_coef: Record<string, number> };
+  prior_evaluation: { rmse_o_base: number; rmse_o_full: number; rmse_d_base: number; rmse_d_full: number; seasons_o_improved: number; seasons_d_improved: number };
+};
 type Poss = { fta_coef: number; rmse_at_fit: number; n_team_games: number };
 
 const f = (x: number | undefined, d = 3) => (x == null ? "–" : x.toFixed(d));
@@ -27,6 +32,7 @@ export default function MethodologyView() {
   const bt = useJson<BT>("params/backtest.json").data;
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
+  const pl = useJson<PlayersP>("params/players.json").data;
   return (
     <div className="mx-auto max-w-[1100px]">
       <h1 className="mb-2 text-3xl font-semibold">Methodology</h1>
@@ -114,6 +120,21 @@ export default function MethodologyView() {
             <p className="text-xs">Log loss per test season (lower is better).</p>
           </>
         ) : <div className="skeleton h-40" />}
+      </Section>
+
+      <Section title="Player impact rating (v1, box-score based)">
+        <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. Impact is shrunk toward zero for low minutes (weight minutes / (minutes + k)).</p>
+        {pl && (<>
+          <table className="dense"><tbody>
+            <tr><td className="l">Ridge strength (leave-one-season-out CV)</td><td>{pl.alpha}</td></tr>
+            <tr><td className="l">Low-minutes shrink k (walk-forward evidence)</td><td>{pl.shrink_k_minutes} minutes</td></tr>
+            <tr><td className="l">In-sample team-rating R²: offense / defense</td><td>{pl.within_season_r2_offense.toFixed(2)} / {pl.within_season_r2_defense.toFixed(2)}</td></tr>
+            <tr><td className="l">Next-season team offense RMSE: prior only vs prior + roster impact</td><td>{pl.prior_evaluation.rmse_o_base.toFixed(3)} vs {pl.prior_evaluation.rmse_o_full.toFixed(3)} (better in {pl.prior_evaluation.seasons_o_improved}/14 seasons)</td></tr>
+            <tr><td className="l">Next-season team defense RMSE</td><td>{pl.prior_evaluation.rmse_d_base.toFixed(3)} vs {pl.prior_evaluation.rmse_d_full.toFixed(3)} (better in {pl.prior_evaluation.seasons_d_improved}/14 seasons)</td></tr>
+          </tbody></table>
+          <p><b className="text-ink">Decision:</b> {pl.decision}</p>
+          <p>Caveats: impact is model-relative, its scale is likely overstated for extreme rebounders and shot blockers, and defense is only weakly identified from box scores (R² about 0.45).</p>
+        </>)}
       </Section>
 
       <Section title="Definitions (not fitted)">

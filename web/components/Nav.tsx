@@ -6,6 +6,7 @@ import { Suspense } from "react";
 const items = [
   ["/", "Today"],
   ["/rankings/", "Rankings"],
+  ["/players/", "Players"],
   ["/tournament/", "Tournament"],
   ["/methodology/", "Methodology"],
 ];

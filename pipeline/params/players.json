@@ -1,0 +1,92 @@
+{
+ "model": {
+  "alpha": 3.0,
+  "feature_mean": {
+   "ast_pct": 13.277,
+   "blk_pct": 1.8643,
+   "drb_pct": 13.1697,
+   "ftr": 0.3568,
+   "orb_pct": 5.1458,
+   "pf_40": 3.516,
+   "stl_pct": 1.8786,
+   "tov_pct": 16.1383,
+   "tpar": 0.3528,
+   "ts": 0.5413,
+   "usg": 19.9501,
+   "usg_ts": -0.139
+  },
+  "feature_std": {
+   "ast_pct": 7.7148,
+   "blk_pct": 2.1957,
+   "drb_pct": 4.8356,
+   "ftr": 0.1665,
+   "orb_pct": 3.6688,
+   "pf_40": 1.3081,
+   "stl_pct": 0.8225,
+   "tov_pct": 5.4196,
+   "tpar": 0.23,
+   "ts": 0.0639,
+   "usg": 5.0624,
+   "usg_ts": 1.1938
+  },
+  "offense_coef": {
+   "usg": 1.3183,
+   "ts": -1.1426,
+   "ast_pct": 4.399,
+   "tov_pct": -8.2756,
+   "orb_pct": 10.5772,
+   "ftr": 0.6126,
+   "tpar": -0.6617,
+   "usg_ts": 9.9157
+  },
+  "defense_coef": {
+   "stl_pct": -3.8847,
+   "blk_pct": -9.8518,
+   "drb_pct": -16.0857,
+   "pf_40": 2.6169,
+   "orb_pct": -5.4203,
+   "tov_pct": -0.9742
+  }
+ },
+ "alpha_cv_error": {
+  "1.0": 0.36838477790154905,
+  "3.0": 0.3682379973858221,
+  "10.0": 0.3682623491188215,
+  "30.0": 0.3694879774464667,
+  "100.0": 0.3770322617554088,
+  "300.0": 0.39773377451881387
+ },
+ "alpha": 3.0,
+ "shrink_k_minutes": 150,
+ "shrink_k_evidence": "k minimizing pooled walk-forward next-season RMSE (players_prior_eval.csv)",
+ "within_season_r2_offense": 0.7086004077057717,
+ "within_season_r2_defense": 0.4369423913504297,
+ "prior_evaluation": {
+  "rmse_o_base": 4.842259331066335,
+  "rmse_o_full": 4.820552995537006,
+  "rmse_d_base": 4.373358083281705,
+  "rmse_d_full": 4.364217964788602,
+  "seasons_o_improved": 6,
+  "seasons_d_improved": 7,
+  "adopt": false
+ },
+ "decision": "Roster-based preseason prior NOT adopted: did not improve next-season team ratings in at least 9 of 14 walk-forward test seasons (SPEC 7: adopt only if cross validation says it helps).",
+ "features_offense": [
+  "usg",
+  "ts",
+  "ast_pct",
+  "tov_pct",
+  "orb_pct",
+  "ftr",
+  "tpar",
+  "usg_ts"
+ ],
+ "features_defense": [
+  "stl_pct",
+  "blk_pct",
+  "drb_pct",
+  "pf_40",
+  "orb_pct",
+  "tov_pct"
+ ]
+}

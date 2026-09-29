@@ -6,6 +6,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Game, Ratings, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, heat, pct, percentiles, prettyDate, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
+import { usePlayers } from "@/lib/players";
 import TeamLogo from "./TeamLogo";
 
 type Stats = { rows: Record<string, Record<string, number>> };
@@ -71,6 +72,8 @@ export default function TeamView({ id }: { id: string }) {
   const past = useMemo(() => games.filter((g) => g.ok), [games]);
   const rest = useMemo(() => games.filter((g) => !g.ok), [games]);
 
+  const PL = usePlayers(season && !upcoming ? season : null);
+  const roster = useMemo(() => (PL?.rows ?? []).filter((r) => r.tid === id).sort((a, b) => (b.min as number) - (a.min as number)), [PL, id]);
   const seasons = [...(meta?.seasons ?? []), ...(meta ? [meta.upcoming_season] : [])].reverse();
   const stats = S?.rows[id];
   const rankOfStat = (k: string, higher = true) => {
@@ -197,7 +200,19 @@ export default function TeamView({ id }: { id: string }) {
           </div>
         </div>
       </div>
-      <p className="text-xs text-faint">Predictions shown are the pregame values from the walk-forward model (no knowledge of the result). Roster and player stats arrive in a later phase.</p>
+      {roster.length > 0 && (
+        <div className="card mb-6 overflow-hidden">
+          <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Roster and player stats</h2>
+          <div className="p-2"><table className="dense"><thead><tr>{th("Player", true)}{th("Pos", true)}{th("Ht", true)}{th("Cl", true)}{th("GP")}{th("MPG")}{th("PPG")}{th("RPG")}{th("APG")}{th("TS%")}{th("USG")}{th("Impact")}</tr></thead>
+            <tbody>{roster.slice(0, 14).map((r) => (
+              <tr key={r.id}><td className="l"><Link className="font-medium hover:text-accent" href={`/player/?id=${r.id}&season=${season}`}>{r.name}</Link></td>
+                <td className="l text-muted">{String(r.pos ?? "")}</td><td className="l text-muted">{String(r.ht ?? "")}</td><td className="l text-muted">{String(r.cls ?? "")}</td>
+                <td>{r.gp}</td><td>{fmt(r.mpg as number, 1)}</td><td>{fmt(r.ppg as number, 1)}</td><td>{fmt(r.rpg as number, 1)}</td><td>{fmt(r.apg as number, 1)}</td>
+                <td>{r.ts == null ? "–" : fmt((r.ts as number) * 100, 1)}</td><td>{fmt(r.usg as number, 1)}</td>
+                <td><span className="block rounded px-1.5" style={{ background: heat(r.pc_imp as number | null) }}>{signed(r.imp as number, 1)}</span></td></tr>))}</tbody></table></div>
+        </div>
+      )}
+      <p className="text-xs text-faint">Predictions shown are the pregame values from the walk-forward model (no knowledge of the result). Player impact is a fitted box-score rating (see Methodology).</p>
     </div>
   );
 }

@@ -191,10 +191,12 @@ def export_all(asof_default: str | None = None):
                         "default_asof": last_dates[cur], "current_last_date": str(pd.read_parquet(table_path("games", cur)).game_date.max().date()), "season_first_date": str(pd.read_parquet(table_path("games", cur)).game_date.min().date()), "generated": pd.Timestamp.now("UTC").isoformat()})
     write("tournament.json", {"status": "coming_soon", "brackets": []})
     # methodology inputs
-    for name in ("adjeff.json", "backtest.json", "possessions.json"):
+    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json"):
         src = ROOT / "pipeline" / "params" / name
         if src.exists():
             d = json.loads(src.read_text())
+            if name == "players.json":
+                d.pop("model", None) if False else None
             if name == "adjeff.json":
                 for k in ("calibration_grid_x", "calibration_grid_y", "season_cfgs", "prior_coefs_by_season"):
                     d.pop(k, None)
