@@ -27,6 +27,16 @@ def sh(cmd: list[str], dry: bool):
         subprocess.run(cmd, check=True)
 
 
+def _stage(src, name, dry):
+    """gh names the asset after the file (a '#label' is only a display label), so copy to a correctly named file."""
+    import shutil
+    dst = ROOT / "data" / "stage" / name
+    if not dry:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+    return str(dst)
+
+
 def upload(dry=False):
     if not dry:
         r = subprocess.run(["gh", "release", "view", TAG], capture_output=True)
@@ -37,17 +47,23 @@ def upload(dry=False):
     for t in TABLES:
         d = WH / t
         for p in sorted(d.glob("*.parquet")) if d.exists() else []:
-            files.append(f"{p}#{t}__{p.stem}.parquet")
+            files.append(_stage(p, f"{t}__{p.stem}.parquet", dry))
     tgz = ROOT / "data" / "model_artifacts.tar.gz"
     if ART.exists():
         if not dry:
             with tarfile.open(tgz, "w:gz") as tf:
                 tf.add(ART, arcname="backtest")
-        files.append(f"{tgz}#model_artifacts.tar.gz")
+        files.append(str(tgz))
     if LOG.exists():
-        files.append(f"{LOG}#prediction_log.parquet")
-    for i in range(0, len(files), 25):
-        sh(["gh", "release", "upload", TAG, "--clobber", *files[i:i + 25]], dry)
+        files.append(_stage(LOG, "prediction_log.parquet", dry))
+    for f in files:  # one asset per call: batched uploads failed intermittently
+        for attempt in range(3):
+            try:
+                sh(["gh", "release", "upload", TAG, "--clobber", f], dry)
+                break
+            except subprocess.CalledProcessError:
+                if attempt == 2:
+                    raise
 
 
 def download(dry=False):
