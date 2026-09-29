@@ -63,6 +63,7 @@ def run_season(S: int):
         t = r.table()
         t["date"] = pd.Timestamp("1970-01-01") + pd.Timedelta(days=D)
         t["hca"] = r.hca
+        t["mu"] = r.mu
         rat.append(t)
 
     pr = block_predict(sd, cfg, prior, 1, hook)

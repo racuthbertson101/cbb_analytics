@@ -7,3 +7,5 @@
 - Player impact v1 (box-score): scale is inflated for extreme rebounders/shot-blockers (ecological regression on team averages) and defense R2 is ~0.45; top of the leaderboard skews to rim-protecting bigs. Kept as labeled v1; RAPM (Phase 9) is the intended upgrade.
 - Roster-based preseason prior failed walk-forward CV (better in 6/14 seasons for offense, 7/14 defense), so NOT adopted; recent seasons (2025-26) show larger gains (transfer era) — revisit after the 2027 season.
 - Position/height/class only from rosters for 2025+ (`ht`, `cls` null earlier).
+- Margin-aware Elo matches the ridge model on margin MAE (9.006 vs 9.019, 2015-26): ridge model has room to improve (e.g. prior/carryover). Bradley-Terry gets 0 consensus weight (reported honestly).
+- Non-adjeff systems and resume metrics are weekly snapshots (every 7th game date), not daily; player-driven rating is season-end only.

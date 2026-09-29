@@ -17,7 +17,10 @@ export const shortConf = (c?: string) =>
     .replace("Mountain West", "MWC").replace("Atlantic Sun", "ASUN").replace("Conference USA", "C-USA")
     .replace("Western Athletic", "WAC").replace("West Coast", "WCC");
 
-type R = Row & { conf: string; team: string; heat: Record<string, number | null> };
+type Sys = { dates: string[]; teams: string[]; poss: number } & Record<string, (number | null)[][] | string[] | number>;
+type R = Row & { conf: string; team: string; heat: Record<string, number | null>; rating: number | null; mrank: number | null; wab: number | null; sor: number | null; ncsos: number | null; q: (number | null)[] };
+
+export const SYSTEMS: [string, string][] = [["adj", "Adjusted efficiency"], ["cons", "Consensus"], ["elo", "Elo (margin)"], ["bt", "Bradley-Terry"], ["pd", "Player-driven"], ["mrank", "Mean rank"]];
 
 export default function RankingsView() {
   const meta = useMeta();
@@ -27,16 +30,40 @@ export default function RankingsView() {
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const { data: R } = useJson<Ratings>(season ? `ratings/${season}.json` : null);
   const { data: G } = useJson<{ games: Game[] }>(season ? `games/${season}.json` : null);
+  const { data: SY } = useJson<Sys>(season ? `systems/${season}.json` : null);
+  const sys = sp.get("sys") || "adj";
+  const view = sp.get("view") || "ratings";
   const lastDate = R?.dates[R.dates.length - 1];
   const asof = sp.get("asof") || lastDate || "";
   const [conf, setConf] = useState("All");
   const [q, setQ] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([{ id: "rank", desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: view === "resume" ? "wab" : "rank", desc: view === "resume" }]);
+  const sortKey = view + sys;
+  const [lastKey, setLastKey] = useState(sortKey);
+  if (lastKey !== sortKey) {
+    setLastKey(sortKey);
+    setSorting([{ id: view === "resume" ? "wab" : "rank", desc: view === "resume" }]);
+  }
 
   const d1 = useMemo(() => new Set((teams ?? []).filter((t) => t.conf[String(season)]).map((t) => t.id)), [teams, season]);
   const rows: R[] = useMemo(() => {
     if (!R || !G || !teams) return [];
-    const base = computeRankings(R, G.games, asof, d1);
+    let base = computeRankings(R, G.games, asof, d1);
+    const si = SY ? dateIndex(SY.dates, asof) : -1;
+    const col = (k: string, i: number, id: string) => {
+      const j = SY ? SY.teams.indexOf(id) : -1;
+      return SY && j >= 0 && i >= 0 ? (SY[k] as (number | null)[][])[i][j] : null;
+    };
+    if (SY && sys !== "adj" && si >= 0) {
+      const rankMap = (i: number) => {
+        const a = base.map((r) => [r.id, col(sys, i, r.id)] as const).filter((x) => x[1] != null) as [string, number][];
+        a.sort((x, y) => (sys === "mrank" ? x[1] - y[1] : y[1] - x[1]));
+        return new Map(a.map(([id], k) => [id, k + 1]));
+      };
+      const now = rankMap(si);
+      const prev = si > 0 ? rankMap(si - 1) : null;
+      base = base.filter((r) => now.has(r.id)).map((r) => ({ ...r, rank: now.get(r.id) as number, rankPrev: prev?.get(r.id) ?? null })).sort((a, b) => a.rank - b.rank);
+    }
     const ps = {
       off: percentiles(base.map((r) => r.off), true),
       def: percentiles(base.map((r) => r.def), false),
@@ -46,11 +73,14 @@ export default function RankingsView() {
     };
     return base.map((r, i) => ({
       ...r,
+      rating: sys === "adj" ? (r.margin * ((SY?.poss as number) ?? 68.5)) / 100 : col(sys, si, r.id),
+      mrank: col("mrank", si, r.id), wab: col("wab", si, r.id), sor: col("sor", si, r.id), ncsos: col("ncsos", si, r.id),
+      q: ["q1w", "q1l", "q2w", "q2l", "q3w", "q3l", "q4w", "q4l"].map((k) => col(k, si, r.id)),
       conf: shortConf(map.get(r.id)?.conf[String(season)]),
       team: map.get(r.id)?.name ?? r.id,
       heat: { off: ps.off[i], def: ps.def[i], margin: ps.margin[i], sos: ps.sos[i], luck: ps.luck[i] },
     }));
-  }, [R, G, teams, asof, d1, map, season]);
+  }, [R, G, teams, asof, d1, map, season, SY, sys]);
 
   const confs = useMemo(() => ["All", ...Array.from(new Set(rows.map((r) => r.conf))).filter(Boolean).sort()], [rows]);
   const data = useMemo(
@@ -99,15 +129,37 @@ export default function RankingsView() {
       },
       { id: "conf", header: "Conf", meta: "l", accessorFn: (r) => r.conf, cell: ({ getValue }) => <span className="text-muted">{getValue() as string}</span> },
       { id: "rec", header: "W-L", accessorFn: (r) => r.w / Math.max(1, r.w + r.l), cell: ({ row }) => `${row.original.w}-${row.original.l}` },
-      { id: "margin", header: "AdjEM", accessorFn: (r) => r.margin, cell: heatCell("margin", 1, true) },
-      { id: "off", header: "AdjO", accessorFn: (r) => r.off, cell: heatCell("off", 1) },
-      { id: "def", header: "AdjD", accessorFn: (r) => r.def, sortDescFirst: false, cell: heatCell("def", 1) },
-      { id: "tempo", header: "Tempo", accessorFn: (r) => r.tempo, cell: heatCell("tempo", 1, false, false) },
-      { id: "sos", header: "SOS", accessorFn: (r) => r.sos, cell: heatCell("sos", 1, true) },
-      { id: "luck", header: "Luck", accessorFn: (r) => r.luck, cell: heatCell("luck", 1, true) },
-      { id: "trend", header: "Trend", enableSorting: false, accessorFn: (r) => r.trend, cell: ({ getValue }) => <Sparkline data={getValue() as number[]} /> },
+      ...(view === "resume"
+        ? ([
+            { id: "wab", header: "WAB", accessorFn: (r) => r.wab, cell: heatCell("luck", 1, true, false) },
+            {
+              id: "sor", header: "SOR", accessorFn: (r) => r.sor, sortDescFirst: false,
+              cell: ({ getValue }) => { const v = getValue() as number | null; return v == null ? "–" : v < 0.001 ? "<0.1%" : (v * 100).toFixed(1) + "%"; },
+            },
+            ...[1, 2, 3, 4].map((q) => ({
+              id: `q${q}`, header: `Q${q}`,
+              accessorFn: (r: R) => (r.q[2 * (q - 1)] ?? 0) / Math.max(1, (r.q[2 * (q - 1)] ?? 0) + (r.q[2 * (q - 1) + 1] ?? 0)),
+              cell: ({ row }: { row: { original: R } }) => `${row.original.q[2 * (q - 1)] ?? "–"}-${row.original.q[2 * (q - 1) + 1] ?? "–"}`,
+            })),
+            { id: "sos", header: "SOS", accessorFn: (r) => r.sos, cell: heatCell("sos", 1, true) },
+            { id: "ncsos", header: "NC SOS", accessorFn: (r) => r.ncsos, cell: ({ getValue }) => <span>{signed(getValue() as number | null, 1)}</span> },
+            { id: "luck", header: "Luck", accessorFn: (r) => r.luck, cell: heatCell("luck", 1, true) },
+          ] as ColumnDef<R>[])
+        : ([
+            {
+              id: "rating", header: sys === "mrank" ? "Mean rank" : "Rating", accessorFn: (r) => (sys === "mrank" ? r.mrank : r.rating), sortDescFirst: sys !== "mrank",
+              cell: ({ getValue }) => <b className="num">{sys === "mrank" ? fmt(getValue() as number | null, 1) : signed(getValue() as number | null, 1)}</b>,
+            },
+            { id: "margin", header: "AdjEM", accessorFn: (r) => r.margin, cell: heatCell("margin", 1, true) },
+            { id: "off", header: "AdjO", accessorFn: (r) => r.off, cell: heatCell("off", 1) },
+            { id: "def", header: "AdjD", accessorFn: (r) => r.def, sortDescFirst: false, cell: heatCell("def", 1) },
+            { id: "tempo", header: "Tempo", accessorFn: (r) => r.tempo, cell: heatCell("tempo", 1, false, false) },
+            { id: "sos", header: "SOS", accessorFn: (r) => r.sos, cell: heatCell("sos", 1, true) },
+            { id: "luck", header: "Luck", accessorFn: (r) => r.luck, cell: heatCell("luck", 1, true) },
+            { id: "trend", header: "Trend", enableSorting: false, accessorFn: (r) => r.trend, cell: ({ getValue }) => <Sparkline data={getValue() as number[]} /> },
+          ] as ColumnDef<R>[])),
     ],
-    [map, season], // eslint-disable-line react-hooks/exhaustive-deps
+    [map, season, view, sys], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const table = useReactTable({
@@ -144,6 +196,14 @@ export default function RankingsView() {
             type="date" value={asof} min={R?.dates[0]} max={lastDate} aria-label="As of date"
             onChange={(e) => setParam("asof", e.target.value && e.target.value !== lastDate ? e.target.value : null)}
           />
+          <select value={sys} onChange={(e) => setParam("sys", e.target.value === "adj" ? null : e.target.value)} aria-label="Ranking system">
+            {SYSTEMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+          <div className="flex overflow-hidden rounded-md border border-line text-xs">
+            {[["ratings", "Ratings"], ["resume", "Résumé"]].map(([k, l]) => (
+              <button key={k} onClick={() => setParam("view", k === "ratings" ? null : k)} className={`px-3 py-1.5 ${view === k ? "bg-surface2 text-ink" : "text-muted"}`}>{l}</button>
+            ))}
+          </div>
           <select value={conf} onChange={(e) => setConf(e.target.value)}>
             {confs.map((c) => <option key={c}>{c}</option>)}
           </select>
@@ -196,6 +256,7 @@ export default function RankingsView() {
       <p className="mt-3 text-xs text-faint">
         AdjO/AdjD: points scored/allowed per 100 possessions against an average opponent (AdjD lower is better). SOS: mean opponent AdjEM.
         Luck: actual wins minus wins expected from pregame win probabilities (D-I games). Heat = percentile among D-I teams.
+        Résumé metrics use our adjusted-efficiency rating in place of NET: WAB = wins above a bubble team (rank 45), SOR = chance an average top-25 team matches the record (lower is better), quadrants use NCAA rank cutoffs by site. Other systems and résumé columns update weekly; the player-driven rating is season-end only.
       </p>
     </div>
   );

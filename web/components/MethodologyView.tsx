@@ -15,6 +15,10 @@ type PlayersP = {
   model: { offense_coef: Record<string, number>; defense_coef: Record<string, number> };
   prior_evaluation: { rmse_o_base: number; rmse_o_full: number; rmse_d_base: number; rmse_d_full: number; seasons_o_improved: number; seasons_d_improved: number };
 };
+type Cons = {
+  test_seasons: number[]; production: { weights: Record<string, number>; bt_margin_scale: number };
+  weights_by_season: Record<string, { weights: Record<string, number> }>;
+} & Record<string, { mae: number; rmse: number; log_loss?: number }>;
 type Poss = { fta_coef: number; rmse_at_fit: number; n_team_games: number };
 
 const f = (x: number | undefined, d = 3) => (x == null ? "–" : x.toFixed(d));
@@ -33,6 +37,8 @@ export default function MethodologyView() {
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
   const pl = useJson<PlayersP>("params/players.json").data;
+  const cs = useJson<Cons>("params/consensus.json").data;
+  const el = useJson<Record<string, { K: number; hca: number; carry: number; cap: number }>>("params/elo_mle.json").data;
   return (
     <div className="mx-auto max-w-[1100px]">
       <h1 className="mb-2 text-3xl font-semibold">Methodology</h1>
@@ -120,6 +126,21 @@ export default function MethodologyView() {
             <p className="text-xs">Log loss per test season (lower is better).</p>
           </>
         ) : <div className="skeleton h-40" />}
+      </Section>
+
+      <Section title="Other ranking systems and the consensus">
+        <p><b className="text-ink">Elo (margin-aware).</b> Ratings are in points of margin; expected margin = rating difference + home advantage; each result moves both ratings by K times the surprise, with the observed margin capped, and ratings regress toward zero between seasons. K, home advantage, carryover and the cap are estimated by minimizing squared margin error (Gaussian maximum likelihood) on seasons before each test season.{el && el["2026"] ? ` Latest fit: K ${el["2026"].K.toFixed(3)}, home ${el["2026"].hca.toFixed(2)} pts, carryover ${el["2026"].carry.toFixed(2)}, cap ${el["2026"].cap.toFixed(0)}.` : ""}</p>
+        <p><b className="text-ink">Bradley-Terry (results only).</b> Ridge logistic regression on wins and losses, ignoring margin, with a home-court term and a prior from last season&apos;s strengths. Ridge strength and prior weight were chosen by walk-forward log loss; refit weekly.</p>
+        <p><b className="text-ink">Player-driven.</b> Team rating built bottom-up from each player&apos;s minutes share times fitted impact (see below). It needs the season&apos;s own minutes, so it is a season-end system and is not part of the consensus weights.</p>
+        <p><b className="text-ink">Résumé metrics.</b> Wins above bubble, strength of record and quadrant records, computed with our adjusted-efficiency rating in place of NET. They are definitions: bubble = rank 45, SOR reference = average of the top 25, quadrant cutoffs = NCAA rank bands by site.</p>
+        <p><b className="text-ink">Consensus.</b> Non-negative least squares on held-out margin error over adjusted efficiency, Elo, Bradley-Terry and last season&apos;s rating; team ratings are blended with the (renormalized) learned weights, and a mean-rank column averages the systems&apos; ranks.</p>
+        {cs && (<>
+          <table className="dense"><thead><tr><th className="l">System (test seasons {cs.test_seasons[0]}-{cs.test_seasons[1]})</th><th>MAE</th><th>RMSE</th><th>Log loss</th></tr></thead><tbody>
+            {[["adjeff", "Adjusted efficiency"], ["elo", "Elo (margin-aware)"], ["bt", "Bradley-Terry (scaled)"], ["prev", "Previous-season rating"], ["cons", "Consensus"]].map(([k, l]) => (
+              <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
+          </tbody></table>
+          <p>Learned production weights: {Object.entries(cs.production.weights).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ")}. Honest note: the margin-aware Elo is about as accurate as the ridge model on margin, and the consensus beats both, so the ridge model is the flagship but not dominant.</p>
+        </>)}
       </Section>
 
       <Section title="Player impact rating (v1, box-score based)">
