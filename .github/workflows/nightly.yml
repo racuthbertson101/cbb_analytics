@@ -1,0 +1,66 @@
+name: nightly
+# 07:30 UTC is about 3:30 am Eastern, after late West Coast games are final. A season guard inside pipeline.nightly does a full run
+# November 1 - April 15 and a light weekly (Monday) run otherwise. Manual dispatch always runs (force).
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+    inputs:
+      today:
+        description: "Replay date YYYY-MM-DD (leave empty for the real date)"
+        required: false
+      nsim:
+        description: "Conference simulations"
+        default: "20000"
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # release assets (warehouse tag)
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NEXT_PUBLIC_BASE_PATH: /cbb_analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Python and site dependencies
+        run: |
+          uv sync
+          cd web && npm ci
+      - name: Download warehouse tables, model artifacts and prediction log
+        run: uv run python -m pipeline.release download
+      - name: Nightly pipeline (ingest, validate, refit, predict, simulate, export, build)
+        run: |
+          ARGS="--nsim ${{ inputs.nsim || 20000 }} --base-path /cbb_analytics"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="$ARGS --force"; fi
+          if [ -n "${{ inputs.today }}" ]; then ARGS="$ARGS --today ${{ inputs.today }}"; fi
+          uv run python -m pipeline.nightly $ARGS
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+      - name: Upload updated warehouse, artifacts and prediction log
+        run: uv run python -m pipeline.release upload
+  deploy:
+    needs: build          # any failure above leaves the previous deployment untouched
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

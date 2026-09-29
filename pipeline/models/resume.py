@@ -97,7 +97,11 @@ def compute(seasons=range(2010, 2027)):
                 out.append(rec)
         print("resume", y, flush=True)
     df = pd.DataFrame(out)
-    df.to_parquet(BT / "resume.parquet")
+    path = BT / "resume.parquet"
+    if path.exists() and set(seasons) != set(range(2010, 2027)):
+        old = pd.read_parquet(path)
+        df = pd.concat([old[~old.season.isin(list(seasons))], df], ignore_index=True)
+    df.to_parquet(path)
     return df
 
 

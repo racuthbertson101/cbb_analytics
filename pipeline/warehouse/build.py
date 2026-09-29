@@ -111,8 +111,8 @@ def build_season(y: int, d1_prev: set | None = None):
     st = _rd("standings", f"standings_{y}.parquet")
     conf = None
     if st is not None:
-        conf = st[["group_id", "group_name", "team_id"]].drop_duplicates("team_id")
-        conf = conf[~conf.group_name.str.contains("Crown", na=False)].copy()
+        conf = st[["group_id", "group_name", "team_id"]]
+        conf = conf[~conf.group_name.str.contains("Crown", na=False)].drop_duplicates("team_id").copy()  # drop the Crown pseudo-group BEFORE deduping
         conf["team_id"] = conf.team_id.astype(str)
     sc = pd.concat([
         pd.DataFrame({"team_id": games.home_id, "conf_id": games.home_conf_id}),
@@ -148,6 +148,11 @@ def build_season(y: int, d1_prev: set | None = None):
         tg = tb[["game_id", "team_id", "opponent_team_id", "team_home_away"] + list(TEAM_STAT_RENAME)
                 + ["points_in_paint", "fast_break_points", "turnover_points", "largest_lead"]].rename(
             columns={"opponent_team_id": "opp_id", "team_home_away": "home_away", **TEAM_STAT_RENAME})
+        for c in TEAM_STAT_RENAME.values():
+            if c not in ("points", "opp_points"):
+                tg[c] = pd.to_numeric(tg[c], errors="coerce")
+        for c in ("points_in_paint", "fast_break_points", "turnover_points", "largest_lead"):
+            tg[c] = pd.to_numeric(tg[c], errors="coerce")  # raw files sometimes store these as text
         tg["season"] = y
         tg = tg[tg.game_id.isin(g.index[g.completed])].copy()
         tg["game_date"] = tg.game_id.map(g.game_date)

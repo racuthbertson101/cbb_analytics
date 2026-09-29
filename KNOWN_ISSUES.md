@@ -9,3 +9,4 @@
 - Position/height/class only from rosters for 2025+ (`ht`, `cls` null earlier).
 - Margin-aware Elo matches the ridge model on margin MAE (9.006 vs 9.019, 2015-26): ridge model has room to improve (e.g. prior/carryover). Bradley-Terry gets 0 consensus weight (reported honestly).
 - Non-adjeff systems and resume metrics are weekly snapshots (every 7th game date), not daily; player-driven rating is season-end only.
+- Shots data: the 2025 (2024-25) shots release has ~0.19M shots vs ~0.71M for 2026 (incomplete source), so shot charts are exported for the latest season only; earlier seasons' shots are not used.

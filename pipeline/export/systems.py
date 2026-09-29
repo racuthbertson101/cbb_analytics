@@ -12,11 +12,20 @@ from pipeline.models.backtest import BT
 from pipeline.models.bt import snap_days
 from pipeline.models.data import load_games
 from pipeline.players.team_rating import season_final
-from pipeline.warehouse.paths import PARAMS, table_path
+from pipeline.warehouse.paths import CURRENT_SEASON, PARAMS, table_path
 
 from .contract import write, r1
 
 POSS = 68.5  # points-per-game conversion factor for per-100 ratings (mean D-I possessions; display scale only)
+
+
+def _extras():
+    """Drop-in systems from pipeline/models/extra (registry pattern: no core edits needed)."""
+    import importlib
+    import pkgutil
+
+    from pipeline.models import extra
+    return [importlib.import_module(f"pipeline.models.extra.{m.name}") for m in pkgutil.iter_modules(extra.__path__) if not m.name.startswith("_")]
 
 
 def main():
@@ -31,16 +40,16 @@ def main():
     w3 = w3 / w3.sum()
     # player-driven display slope (OLS of adjusted margin on player-driven margin), display only
     xs, ys = [], []
-    for y in range(2010, 2027):
+    for y in range(2010, CURRENT_SEASON + 1):
         f = season_final(y).join(R[(R.season == y) & (R.date == R[R.season == y].date.max())].set_index("team_id"), how="inner")
         xs.append(f.pd_margin.values)
         ys.append((f.adj_off - f.adj_def).values)
     x, yv = np.concatenate(xs), np.concatenate(ys)
     slope = float((x * yv).sum() / (x * x).sum())
     (PARAMS / "player_driven.json").write_text(json.dumps({"display_slope_to_adj_margin": slope, "note": "display scaling only; the player-driven rating enters mean rank, not consensus weights"}, indent=1))
-    seasons = list(range(2010, 2027))
+    seasons = list(range(2010, CURRENT_SEASON + 1))
     for y in seasons:
-        p = ep.get(str(y), ep["2012"])
+        p = ep.get(str(y)) or (ep["2012"] if y < 2012 else ep[max(ep, key=int)])
         Gy = G[G.season <= y].reset_index(drop=True)
         days = np.unique(G[G.season == y].date.values)
         sd = snap_days(days)
@@ -87,6 +96,8 @@ def main():
                 out[k] = [[None if np.isnan(a) else int(a) for a in row] for row in v]
             else:
                 out[k] = [r1(row) for row in v]
+        for mod in _extras():
+            out[mod.KEY] = mod.snapshots(y, d1, dates)
         write(f"systems/{y}.json", out)
         print("systems", y, flush=True)
 

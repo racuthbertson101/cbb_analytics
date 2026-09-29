@@ -1,0 +1,62 @@
+{
+ "nav": [
+  [
+   "/",
+   "Today"
+  ],
+  [
+   "/rankings/",
+   "Rankings"
+  ],
+  [
+   "/conferences/",
+   "Conferences"
+  ],
+  [
+   "/players/",
+   "Players"
+  ],
+  [
+   "/predictions/",
+   "Accuracy"
+  ],
+  [
+   "/compare/",
+   "Compare"
+  ],
+  [
+   "/tournament/",
+   "Tournament"
+  ],
+  [
+   "/methodology/",
+   "Methodology"
+  ]
+ ],
+ "rankingSystems": [
+  [
+   "adj",
+   "Adjusted efficiency"
+  ],
+  [
+   "cons",
+   "Consensus"
+  ],
+  [
+   "elo",
+   "Elo (margin)"
+  ],
+  [
+   "bt",
+   "Bradley-Terry"
+  ],
+  [
+   "pd",
+   "Player-driven"
+  ],
+  [
+   "mrank",
+   "Mean rank"
+  ]
+ ]
+}

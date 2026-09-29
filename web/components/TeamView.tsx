@@ -7,6 +7,7 @@ import { Game, Ratings, loadJson, useJson, useMeta, useTeams } from "@/lib/data"
 import { fmt, heat, pct, percentiles, prettyDate, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import { usePlayers } from "@/lib/players";
+import ShotChart, { Bins } from "./ShotChart";
 import TeamLogo from "./TeamLogo";
 
 type Stats = { rows: Record<string, Record<string, number>> };
@@ -30,9 +31,9 @@ export default function TeamView({ id }: { id: string }) {
   const router = useRouter();
   const team = map.get(id);
   const season = Number(sp.get("season")) || meta?.current_season || 0;
-  const upcoming = !!meta && season === meta.upcoming_season;
+  const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
   const { data: R } = useJson<Ratings>(season && !upcoming ? `ratings/${season}.json` : null);
-  const { data: PRE } = useJson<Pre>(upcoming ? "ratings/2027_preseason.json" : null);
+  const { data: PRE } = useJson<Pre>(upcoming ? `ratings/${season}_preseason.json` : null);
   const { data: G } = useJson<{ games: Game[] }>(season ? `games/${season}.json` : null);
   const { data: S } = useJson<Stats>(season && !upcoming ? `teamstats/${season}.json` : null);
   const { data: RK } = useJson<RankRows>(season && !upcoming ? `rankings/${season}.json` : null);
@@ -88,7 +89,9 @@ export default function TeamView({ id }: { id: string }) {
   }, [meta, id]);
   const PL = usePlayers(season && !upcoming ? season : null);
   const roster = useMemo(() => (PL?.rows ?? []).filter((r) => r.tid === id).sort((a, b) => (b.min as number) - (a.min as number)), [PL, id]);
-  const seasons = [...(meta?.seasons ?? []), ...(meta ? [meta.upcoming_season] : [])].reverse();
+  const { data: SH } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/${id}.json` : null);
+  const { data: SHL } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/league.json` : null);
+  const seasons = [...(meta?.seasons ?? []), ...(meta?.upcoming_season ? [meta.upcoming_season] : [])].reverse();
   const stats = S?.rows[id];
   const rankOfStat = (k: string, higher = true) => {
     if (!S || !stats) return "";
@@ -140,7 +143,7 @@ export default function TeamView({ id }: { id: string }) {
         </select>
       </div>
 
-      {upcoming && <div className="card mb-4 px-4 py-3 text-[13px] text-muted">Preseason projection: ratings come from last season and the fitted prior only (no 2026-27 games played yet).</div>}
+      {upcoming && <div className="card mb-4 px-4 py-3 text-[13px] text-muted">Preseason projection: ratings come from last season and the fitted prior only (no {seasonLabel(season)} games played yet).</div>}
 
       <div className="mb-6 grid grid-cols-4 gap-4">
         {snap ? (<>
@@ -224,6 +227,12 @@ export default function TeamView({ id }: { id: string }) {
                 <td>{r.gp}</td><td>{fmt(r.mpg as number, 1)}</td><td>{fmt(r.ppg as number, 1)}</td><td>{fmt(r.rpg as number, 1)}</td><td>{fmt(r.apg as number, 1)}</td>
                 <td>{r.ts == null ? "–" : fmt((r.ts as number) * 100, 1)}</td><td>{fmt(r.usg as number, 1)}</td>
                 <td><span className="block rounded px-1.5" style={{ background: heat(r.pc_imp as number | null) }}>{signed(r.imp as number, 1)}</span></td></tr>))}</tbody></table></div>
+        </div>
+      )}
+      {SH && SHL && (
+        <div className="card mb-6 p-4">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted">Shot chart · {seasonLabel(season)}</h2>
+          <ShotChart bins={SH.bins} league={SHL.bins} />
         </div>
       )}
       {hist.length > 0 && (

@@ -6,7 +6,9 @@ data/backtest/: per-game predictions and pregame ratings (as of every game date)
 from __future__ import annotations
 
 import json
+import os
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -17,7 +19,7 @@ from . import adjeff
 from .engine import Context, base_params, block_predict, build_prior, finals_no_prior, prior_coefs
 
 TUNE = ROOT / "data" / "tuning"
-BT = ROOT / "data" / "backtest"
+BT = Path(os.environ["CBB_ARTIFACTS"]) if os.environ.get("CBB_ARTIFACTS") else ROOT / "data" / "backtest"  # override for replay
 FIRST_TUNE, FIRST_TEST = 2010, 2012
 SEASONS = list(range(FIRST_TUNE, 2027))
 

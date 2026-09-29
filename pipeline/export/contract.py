@@ -46,13 +46,29 @@ def r1(a):
     return [None if not np.isfinite(x) else round(float(x), 1) for x in a]
 
 
-def export_all(asof_default: str | None = None):
+def _predict_table(tbl: pd.DataFrame, prod: dict, cal, home, away, neutral) -> pd.DataFrame:
+    """Predictions for scheduled games from a ratings table (index team_id; adj_off, adj_def, adj_tempo, mu, hca)."""
+    h, a = tbl.loc[home], tbl.loc[away]
+    hca = tbl.hca.iloc[0] * np.where(neutral, 0.0, 1.0)
+    mu = tbl.mu.iloc[0]
+    ea = h.adj_off.values + a.adj_def.values - mu + hca
+    eb = a.adj_off.values + h.adj_def.values - mu - hca
+    poss = (h.adj_tempo.values + a.adj_tempo.values) / 2
+    m = (ea - eb) * poss / 100
+    q10, q90 = prod["margin_residual_quantiles"]["0.1"], prod["margin_residual_quantiles"]["0.9"]
+    return pd.DataFrame({"pm": m, "pp": poss, "p": cal._win_prob(m, poss), "lo": cal._win_prob(m + q10, poss), "hi": cal._win_prob(m + q90, poss),
+                         "ph": ea * poss / 100, "pa": eb * poss / 100})
+
+
+def export_all(current: int = 2026, upcoming: int | None = 2027):
+    """current = latest season with ratings (live season during play); upcoming = next season for preseason projections (or None)."""
     prod = load_prod()
     G = load_games()
-    ctx = Context(G=G, last_season=2027)  # 2027 has no completed games; used for the preseason prior
-    seasons = [y for y in range(FIRST_EXPORT, 2028) if table_path("games", y).exists()]
+    ctx = Context(G=G, last_season=upcoming or current)  # upcoming season has no completed games; used for the preseason prior
+    seasons = [y for y in range(FIRST_EXPORT, (upcoming or current) + 1) if table_path("games", y).exists()]
     R = pd.read_parquet(BT / "adjeff_ratings.parquet")
     P = pd.read_parquet(BT / "adjeff_preds.parquet")
+    have_R = set(int(s) for s in R.season.unique())
 
     # ---------- teams ----------
     ts_all, tm_all = [], []
@@ -89,7 +105,7 @@ def export_all(asof_default: str | None = None):
         # predictions
         pred = pd.DataFrame(columns=["game_id", "pm", "pp", "p"])
         q10, q90 = prod["margin_residual_quantiles"]["0.1"], prod["margin_residual_quantiles"]["0.9"]
-        if y <= 2026:
+        if y in have_R:
             p = P[P.season == y].copy()
             p["pm"] = p.pred_a - p.pred_b
             p["pp"] = p.pred_poss
@@ -98,8 +114,16 @@ def export_all(asof_default: str | None = None):
             p["hi"] = cal._win_prob(p.pm.values + q90, p.pp.values)
             p["ph"], p["pa"] = p.pred_a, p.pred_b
             pred = p[["game_id", "pm", "pp", "p", "lo", "hi", "ph", "pa"]]
+            fut = g[~g.completed]
+            Ry_ = R[R.season == y]
+            tbl_ = Ry_[Ry_.date == Ry_.date.max()].set_index("team_id")
+            fut = fut[fut.home_id.isin(tbl_.index) & fut.away_id.isin(tbl_.index)]
+            if len(fut):
+                fp = _predict_table(tbl_, prod, cal, fut.home_id.values, fut.away_id.values, fut.neutral_site.values)
+                fp.insert(0, "game_id", fut.game_id.values)
+                pred = pd.concat([pred, fp[pred.columns]], ignore_index=True)
         else:
-            r = ratings_asof(ctx, 2027, pd.Timestamp("2026-10-01"), prod)
+            r = ratings_asof(ctx, y, pd.Timestamp(f"{y - 1}-10-01"), prod)
             pr = Predictor(r, prod)
             up = g[~g.completed & g.home_id.isin(r.tix) & g.away_id.isin(r.tix)]
             ia, ib = up.home_id.map(r.tix).values, up.away_id.map(r.tix).values
@@ -111,7 +135,7 @@ def export_all(asof_default: str | None = None):
         g = g.merge(pred, on="game_id", how="left")
         # watchability (pregame only): ratings as of each date, last-season star impact, title leverage from a standings simulation if present
         star = W.star_table(y)
-        if y <= 2026:
+        if y in have_R:
             ctx_w = W.rating_context(y, R)
         else:
             tb_ = r.table().set_index("team_id")
@@ -145,7 +169,7 @@ def export_all(asof_default: str | None = None):
         write(f"games/{y}.json", {"season": y, "games": rows})
 
         # ratings by date
-        if y <= 2026:
+        if y in have_R:
             Ry = R[R.season == y]
             dates = sorted(Ry.date.unique())
             teams_y = sorted(Ry.team_id.unique())
@@ -211,14 +235,14 @@ def export_all(asof_default: str | None = None):
                 "three_pct": agg.tpm / agg.tpa, "poss_pg": agg.poss / tg.groupby("team_id").size()})
             write(f"teamstats/{y}.json", {"season": y, "rows": {k: {c_: v for c_, v in row.items()} for k, row in st.round(4).to_dict("index").items()}})
         else:
-            r = ratings_asof(ctx, 2027, pd.Timestamp("2026-10-01"), prod)
+            r = ratings_asof(ctx, y, pd.Timestamp(f"{y - 1}-10-01"), prod)
             t = r.table()
-            write("ratings/2027_preseason.json", {"season": 2027, "mu": round(float(r.mu), 2), "hca": round(float(r.hca), 3), "teams": t.team_id.tolist(), "off": r1(t.adj_off), "def": r1(t.adj_def),
+            write(f"ratings/{y}_preseason.json", {"season": y, "mu": round(float(r.mu), 2), "hca": round(float(r.hca), 3), "teams": t.team_id.tolist(), "off": r1(t.adj_off), "def": r1(t.adj_def),
                                                   "tempo": r1(t.adj_tempo)})
 
-    cur = max(y for y in seasons if y <= 2026)
-    write("meta.json", {"version": CONTRACT_VERSION, "sport": "mbb", "current_season": cur, "upcoming_season": 2027,
-                        "seasons": [y for y in seasons if y <= 2026], "last_game_date": last_dates[cur],
+    cur = current
+    write("meta.json", {"version": CONTRACT_VERSION, "sport": "mbb", "current_season": cur, "upcoming_season": upcoming, "upcoming_first_date": (str(pd.read_parquet(table_path("games", upcoming)).game_date.min().date()) if upcoming else None),
+                        "seasons": [y for y in seasons if y <= current], "last_game_date": last_dates[cur],
                         "default_asof": last_dates[cur], "current_last_date": str(pd.read_parquet(table_path("games", cur)).game_date.max().date()), "season_first_date": str(pd.read_parquet(table_path("games", cur)).game_date.min().date()), "generated": pd.Timestamp.now("UTC").isoformat()})
     write("tournament.json", {"status": "coming_soon", "brackets": []})
     write("params/predict.json", {"sigma_coef": prod["sigma_coef"], "cal_x": prod["calibration_grid_x"][::5], "cal_y": prod["calibration_grid_y"][::5],
@@ -233,7 +257,7 @@ def export_all(asof_default: str | None = None):
         idx["players"] = [[r_[c_.index("id")], r_[c_.index("name")], r_[c_.index("tid")], r_[c_.index("pos")]] for r_ in rows_]
     write("search.json", idx)
     # methodology inputs
-    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json"):
+    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json", "rapm_compare.json"):
         src = ROOT / "pipeline" / "params" / name
         if src.exists():
             d = json.loads(src.read_text())

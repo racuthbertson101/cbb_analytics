@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from pipeline.warehouse.paths import table_path
+from pipeline.warehouse.paths import CURRENT_SEASON, table_path
 
 from .contract import OUT, write
 
@@ -26,7 +26,7 @@ def pct_ranks(s: pd.Series, ref: pd.Series, higher=True) -> np.ndarray:
     return p if higher else 1 - p
 
 
-def export_players(seasons=None, last_season=2026):
+def export_players(seasons=None, last_season=CURRENT_SEASON):
     seasons = seasons or [y for y in range(2010, last_season + 1) if table_path("player_impacts", y).exists()]
     career = {}
     for y in seasons:

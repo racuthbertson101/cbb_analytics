@@ -7,41 +7,41 @@ Walk-forward over test seasons 2012-2026. Each game is predicted from ratings fi
 | System | MAE | RMSE | Log loss | Brier | Accuracy |
 |---|---|---|---|---|---|
 | adjeff (calibrated) | 8.930 | 11.347 | 0.5289 | 0.1785 | 0.728 |
-| adjeff (raw normal) | 8.930 | 11.347 | 0.5289 | 0.1785 | 0.728 |
-| home team wins | 11.140 | 14.229 | 0.6536 | 0.2305 | 0.649 |
-| previous-season rating only | 9.891 | 12.539 | 0.5880 | 0.2025 | 0.678 |
+| adjeff (raw normal) | 8.930 | 11.347 | 0.5290 | 0.1785 | 0.728 |
+| home team wins | 11.141 | 14.230 | 0.6536 | 0.2305 | 0.649 |
+| previous-season rating only | 9.891 | 12.539 | 0.5879 | 0.2025 | 0.678 |
 | simple Elo | 9.461 | 12.042 | 0.5473 | 0.1855 | 0.715 |
 
-Spread model uses tempo: **True** (log loss const 0.5292 vs tempo-dependent 0.5289).
-Calibrator chosen: **platt** (walk-forward log loss by candidate: raw 0.5289, platt 0.5289, isotonic 0.5295).
-Expected calibration error: 0.0071 (uncalibrated 0.0074). Bias (pred - actual margin): 0.249.
+Spread model uses tempo: **True** (log loss const 0.5292 vs tempo-dependent 0.5290).
+Calibrator chosen: **platt** (walk-forward log loss by candidate: raw 0.5290, platt 0.5289, isotonic 0.5295).
+Expected calibration error: 0.0072 (uncalibrated 0.0074). Bias (pred - actual margin): 0.249.
 Seasons where adjeff beats home-team-wins log loss: 15 of 15.
 
 ## Reliability (calibrated)
 
 | Bin | Mean predicted | Observed | N |
 |---|---|---|---|
-| 0 | 0.066 | 0.062 | 876 |
-| 1 | 0.155 | 0.154 | 2533 |
-| 2 | 0.254 | 0.262 | 4348 |
-| 3 | 0.353 | 0.371 | 6233 |
-| 4 | 0.453 | 0.455 | 8154 |
-| 5 | 0.551 | 0.556 | 10095 |
-| 6 | 0.651 | 0.648 | 11807 |
-| 7 | 0.750 | 0.733 | 12490 |
-| 8 | 0.850 | 0.845 | 12634 |
-| 9 | 0.950 | 0.946 | 12397 |
+| 0 | 0.066 | 0.062 | 875 |
+| 1 | 0.155 | 0.154 | 2532 |
+| 2 | 0.254 | 0.263 | 4350 |
+| 3 | 0.353 | 0.371 | 6237 |
+| 4 | 0.453 | 0.455 | 8168 |
+| 5 | 0.551 | 0.556 | 10097 |
+| 6 | 0.651 | 0.648 | 11810 |
+| 7 | 0.750 | 0.733 | 12492 |
+| 8 | 0.850 | 0.845 | 12637 |
+| 9 | 0.950 | 0.946 | 12406 |
 
 ## Accuracy by confidence bucket
 
 | Bucket | N | Mean confidence | Accuracy |
 |---|---|---|---|
-| 0.50-0.60 | 18249 | 0.549 | 0.551 |
-| 0.60-0.70 | 18040 | 0.650 | 0.642 |
-| 0.70-0.80 | 16838 | 0.749 | 0.734 |
-| 0.80-0.90 | 15167 | 0.849 | 0.845 |
-| 0.90-0.95 | 6855 | 0.925 | 0.919 |
-| 0.95-1.00 | 6418 | 0.975 | 0.974 |
+| 0.50-0.60 | 18265 | 0.549 | 0.551 |
+| 0.60-0.70 | 18047 | 0.650 | 0.642 |
+| 0.70-0.80 | 16842 | 0.749 | 0.734 |
+| 0.80-0.90 | 15169 | 0.849 | 0.845 |
+| 0.90-0.95 | 6859 | 0.925 | 0.919 |
+| 0.95-1.00 | 6422 | 0.975 | 0.974 |
 
 ## By season (adjeff calibrated)
 
@@ -61,9 +61,9 @@ Seasons where adjeff beats home-team-wins log loss: 15 of 15.
 | 2023 | 9.09 | 11.46 | 0.5481 | 0.718 | 0.6550 |
 | 2024 | 9.17 | 11.58 | 0.5445 | 0.717 | 0.6537 |
 | 2025 | 9.17 | 11.71 | 0.5290 | 0.724 | 0.6547 |
-| 2026 | 9.30 | 11.82 | 0.5328 | 0.718 | 0.6559 |
+| 2026 | 9.31 | 11.82 | 0.5329 | 0.718 | 0.6559 |
 
-NCAA tournament games: n=924, MAE 9.10, log loss 0.5439, accuracy 0.714.
+NCAA tournament games: n=924, MAE 9.10, log loss 0.5438, accuracy 0.714.
 
 ## Production parameters
 

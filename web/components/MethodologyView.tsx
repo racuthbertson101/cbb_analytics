@@ -38,6 +38,7 @@ export default function MethodologyView() {
   const poss = useJson<Poss>("params/possessions.json").data;
   const pl = useJson<PlayersP>("params/players.json").data;
   const cs = useJson<Cons>("params/consensus.json").data;
+  const rp = useJson<{ pooled: { n: number; corr_net: number; corr_off: number; corr_def: number; spearman_net: number } }>("params/rapm_compare.json").data;
   const el = useJson<Record<string, { K: number; hca: number; carry: number; cap: number }>>("params/elo_mle.json").data;
   return (
     <div className="mx-auto max-w-[1100px]">
@@ -158,6 +159,7 @@ export default function MethodologyView() {
             <tr><td className="l">Next-season team defense RMSE</td><td>{pl.prior_evaluation.rmse_d_base.toFixed(3)} vs {pl.prior_evaluation.rmse_d_full.toFixed(3)} (better in {pl.prior_evaluation.seasons_d_improved}/14 seasons)</td></tr>
           </tbody></table>
           <p><b className="text-ink">Decision:</b> {pl.decision}</p>
+          {rp && <p><b className="text-ink">Versus published NCAA RAPM (2011-2020, {rp.pooled.n.toLocaleString()} matched players with 300+ minutes):</b> correlation with the box-score impact is {rp.pooled.corr_net.toFixed(2)} overall (offense {rp.pooled.corr_off.toFixed(2)}, defense {rp.pooled.corr_def.toFixed(2)}; Spearman {rp.pooled.spearman_net.toFixed(2)}). Box scores capture only a modest share of what on/off-based RAPM sees, especially on defense. RAPM is a comparison only and is not used in any rating.</p>}
           <p>Caveats: impact is model-relative, its scale is likely overstated for extreme rebounders and shot blockers, and defense is only weakly identified from box scores (R² about 0.45).</p>
         </>)}
       </Section>

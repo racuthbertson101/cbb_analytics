@@ -83,8 +83,16 @@ class ImpactModel:
         return out
 
     def to_json(self):
-        return {"alpha": self.alpha, "feature_mean": self.mu.round(4).to_dict(), "feature_std": self.sd.round(4).to_dict(),
-                "offense_coef": self.coef["o"][1].round(4).to_dict(), "defense_coef": self.coef["d"][1].round(4).to_dict()}
+        return {"alpha": self.alpha, "feature_mean": self.mu.to_dict(), "feature_std": self.sd.to_dict(),
+                "offense_coef": self.coef["o"][1].to_dict(), "defense_coef": self.coef["d"][1].to_dict()}
+
+    @classmethod
+    def from_json(cls, d):
+        m = cls(d["alpha"])
+        m.mu, m.sd = pd.Series(d["feature_mean"]), pd.Series(d["feature_std"])
+        o, dd = pd.Series(d["offense_coef"]), pd.Series(d["defense_coef"])
+        m.coef = {"o": (list(o.index), o, 1.0), "d": (list(dd.index), dd, -1.0)}
+        return m
 
 
 def within_season_r2(model, cache, targets, seasons):

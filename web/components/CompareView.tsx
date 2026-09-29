@@ -25,10 +25,10 @@ export default function CompareView() {
   const sp = useSearchParams();
   const router = useRouter();
   const season = Number(sp.get("season")) || meta?.current_season || 0;
-  const upcoming = !!meta && season === meta.upcoming_season;
+  const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
   const a = sp.get("a") || "130", b = sp.get("b") || "150", site = Number(sp.get("site") ?? "0");
   const { data: R } = useJson<Ratings & { mu: number[]; hca: number[] }>(season && !upcoming ? `ratings/${season}.json` : null);
-  const { data: PRE } = useJson<Pre>(upcoming ? "ratings/2027_preseason.json" : null);
+  const { data: PRE } = useJson<Pre>(upcoming ? `ratings/${season}_preseason.json` : null);
   const { data: PP } = useJson<Pred>("params/predict.json");
   const set = (k: string, v: string) => { const p = new URLSearchParams(sp.toString()); p.set(k, v); router.replace(`?${p}`, { scroll: false }); };
 
@@ -50,7 +50,7 @@ export default function CompareView() {
 
   const sorted = useMemo(() => [...(teams ?? [])].sort((x, y) => x.name.localeCompare(y.name)), [teams]);
   const ta = map.get(a), tb = map.get(b);
-  const seasons = [...(meta?.seasons ?? []), ...(meta ? [meta.upcoming_season] : [])].reverse();
+  const seasons = [...(meta?.seasons ?? []), ...(meta?.upcoming_season ? [meta.upcoming_season] : [])].reverse();
 
   return (
     <div className="mx-auto max-w-4xl">

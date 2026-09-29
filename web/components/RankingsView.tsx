@@ -7,6 +7,7 @@ import { Game, Ratings, useJson, useMeta, useTeams } from "@/lib/data";
 import { computeRankings, dateIndex, Row } from "@/lib/rankings";
 import { fmt, heat, percentiles, prettyDate, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
+import site from "@/config/site.json";
 import Sparkline from "./Sparkline";
 
 export const shortConf = (c?: string) =>
@@ -20,7 +21,7 @@ export const shortConf = (c?: string) =>
 type Sys = { dates: string[]; teams: string[]; poss: number } & Record<string, (number | null)[][] | string[] | number>;
 type R = Row & { conf: string; team: string; heat: Record<string, number | null>; rating: number | null; mrank: number | null; wab: number | null; sor: number | null; ncsos: number | null; q: (number | null)[] };
 
-export const SYSTEMS: [string, string][] = [["adj", "Adjusted efficiency"], ["cons", "Consensus"], ["elo", "Elo (margin)"], ["bt", "Bradley-Terry"], ["pd", "Player-driven"], ["mrank", "Mean rank"]];
+export const SYSTEMS = site.rankingSystems as [string, string][];
 
 export default function RankingsView() {
   const meta = useMeta();

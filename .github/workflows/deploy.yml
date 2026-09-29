@@ -1,0 +1,44 @@
+name: deploy
+# Manual redeploy of the site from the stored warehouse (no ingest): use for the first deploy or to republish after a design change.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NEXT_PUBLIC_BASE_PATH: /cbb_analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: uv sync && cd web && npm ci
+      - run: uv run python -m pipeline.release download
+      - run: |
+          uv run python -m pipeline.export.conferences --stats
+          uv run python -m pipeline.export.contract
+          uv run python -m pipeline.export.players
+          uv run python -m pipeline.export.systems
+          uv run python -m pipeline.export.accuracy
+          cd web && npx next build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/out
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

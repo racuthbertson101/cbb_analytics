@@ -10,7 +10,7 @@ import pandas as pd
 
 from pipeline.models.backtest import BT
 from pipeline.sims.conference import CFG_DIR, load_cfg, run_season, slug
-from pipeline.warehouse.paths import PARAMS, table_path
+from pipeline.warehouse.paths import CURRENT_SEASON, PARAMS, table_path
 
 from .contract import OUT, r1, write
 
@@ -62,7 +62,7 @@ def _sim_one(args):
     return conf, out[conf]
 
 
-def sim_standings(season, asof, nsim=20000, workers=8, tag=None):
+def sim_standings(season, asof, nsim=20000, workers=8, keep_only=False):
     ts = pd.read_parquet(table_path("team_seasons", season))
     confs = sorted(ts[ts.is_d1 & ts.conference.notna()].conference.unique())
     with ProcessPoolExecutor(workers) as ex:
@@ -78,7 +78,7 @@ def sim_standings(season, asof, nsim=20000, workers=8, tag=None):
         snap["conferences"][slug(conf)] = {"name": conf, "config": o["cfg"], "n_remaining": o["n_remaining"], "rows": rows}
     p = OUT / "standings" / f"{season}.json"
     prev = json.loads(p.read_text()) if p.exists() else {"season": season, "snapshots": []}
-    prev["snapshots"] = [s for s in prev["snapshots"] if s["asof"] != asof] + [snap]
+    prev["snapshots"] = ([] if keep_only else [s for s in prev["snapshots"] if s["asof"] != asof]) + [snap]
     prev["snapshots"].sort(key=lambda s: s["asof"])
     write(f"standings/{season}.json", prev)
     return snap
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     a = ap.parse_args()
     tiebreak_index()
     if a.stats:
-        conference_stats(list(range(FIRST, 2027)))
+        conference_stats(list(range(FIRST, CURRENT_SEASON + 1)))
     for s in a.sim or []:
         y, d = s.split(":")
         sim_standings(int(y), d, a.nsim)

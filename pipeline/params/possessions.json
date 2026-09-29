@@ -1,7 +1,7 @@
 {
-  "fta_coef": 0.48564185574510954,
-  "rmse_at_0.475": 1.8047430336850756,
-  "rmse_at_fit": 1.8017731764626825,
-  "n_team_games": 205548,
+  "fta_coef": 0.48565133106858055,
+  "rmse_at_0.475": 1.804714586949636,
+  "rmse_at_fit": 1.8017399659938669,
+  "n_team_games": 205622,
   "note": "c minimizes squared disagreement between the two teams' possession estimates"
 }

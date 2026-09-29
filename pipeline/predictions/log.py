@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from pathlib import Path
 
 import pandas as pd
 
 from pipeline.warehouse.paths import ROOT
 
-LOG = ROOT / "data" / "predictions" / "log.parquet"
+LOG = Path(os.environ["CBB_PREDICTION_LOG"]) if os.environ.get("CBB_PREDICTION_LOG") else ROOT / "data" / "predictions" / "log.parquet"
 FIELDS = ["game_id", "made_at", "game_date", "home_id", "away_id", "neutral", "pm", "ph", "pa", "p", "plo", "phi", "model_version"]
 
 

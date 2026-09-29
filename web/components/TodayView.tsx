@@ -104,8 +104,8 @@ export default function TodayView() {
   const router = useRouter();
   const day = sp.get("date") || auto || "";
   const season = day ? seasonOf(day) : 0;
-  const { data: G } = useJson<{ games: Game[] }>(season && meta ? `games/${Math.min(season, meta.upcoming_season)}.json` : null);
-  const ratingsPath = !meta || !season ? null : season <= meta.current_season ? `ratings/${season}.json` : "ratings/2027_preseason.json";
+  const { data: G } = useJson<{ games: Game[] }>(season && meta ? `games/${Math.min(season, meta.upcoming_season ?? meta.current_season)}.json` : null);
+  const ratingsPath = !meta || !season ? null : season <= meta.current_season ? `ratings/${season}.json` : `ratings/${season}_preseason.json`;
   const { data: RR } = useJson<Ratings & Pre>(ratingsPath);
   const [conf, setConf] = useState("All");
   const [sortBy, setSortBy] = useState<"watch" | "quality" | "time">("watch");
@@ -156,8 +156,8 @@ export default function TodayView() {
       {offseason && !sp.get("date") && (
         <div className="card mb-4 border-accent/40 px-4 py-3 text-[13px]">
           <span className="font-medium text-accent">Offseason.</span>{" "}
-          <span className="text-muted">Showing the final day of the last completed season ({seasonEndDay ? prettyDate(seasonEndDay) : ""}). The 2026-27 season opens {meta ? prettyDate("2026-11-02") : ""}.</span>{" "}
-          <button className="text-accent underline" onClick={() => go("2026-11-02")}>See opening-night predictions</button>
+          <span className="text-muted">Showing the final day of the last completed season ({seasonEndDay ? prettyDate(seasonEndDay) : ""}). {meta?.upcoming_first_date ? <>The next season opens {prettyDate(meta.upcoming_first_date)}.</> : null}</span>{" "}
+          {meta?.upcoming_first_date && <button className="text-accent underline" onClick={() => go(meta.upcoming_first_date as string)}>See opening-night predictions</button>}
         </div>
       )}
       {top.length > 0 && (

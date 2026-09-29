@@ -3,17 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import SearchPalette from "./SearchPalette";
+import site from "@/config/site.json";
 
-const items = [
-  ["/", "Today"],
-  ["/rankings/", "Rankings"],
-  ["/conferences/", "Conferences"],
-  ["/players/", "Players"],
-  ["/predictions/", "Accuracy"],
-  ["/compare/", "Compare"],
-  ["/tournament/", "Tournament"],
-  ["/methodology/", "Methodology"],
-];
+const items = site.nav as [string, string][];
 
 function Inner() {
   const path = usePathname() || "/";

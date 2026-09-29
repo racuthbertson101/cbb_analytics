@@ -6,6 +6,7 @@ import { useJson, useMeta, useTeams } from "@/lib/data";
 import { usePlayers } from "@/lib/players";
 import { fmt, heat, prettyDate, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
+import ShotChart, { Bins } from "./ShotChart";
 
 type Logs = { cols: string[]; logs: Record<string, (string | number)[][]> };
 type Career = Record<string, (string | number | null)[][]>;
@@ -27,6 +28,8 @@ export default function PlayerView() {
   const p = useMemo(() => pl?.rows.find((r) => r.id === id) ?? null, [pl, id]);
   const { data: L } = useJson<Logs>(p && meta && season > meta.current_season - 3 ? `playerlogs/${season}/${p.tid}.json` : null);
   const { data: C } = useJson<Career>(id ? `playercareer/${Number(id) % 100}.json` : null);
+  const { data: SH } = useJson<{ players: Record<string, Bins> }>(p && meta && season === meta.current_season ? `shots/${season}/${p.tid}.json` : null);
+  const { data: SHL } = useJson<{ bins: Bins }>(p && meta && season === meta.current_season ? `shots/${season}/league.json` : null);
   const team = p ? map.get(p.tid as string) : undefined;
   const career = C?.[id] ?? [];
   const log = (L?.logs[id] ?? []).slice().reverse();
@@ -85,6 +88,9 @@ export default function PlayerView() {
                     <td>{c[7] == null ? "–" : fmt((c[7] as number) * 100, 1)}</td><td>{c[8] ?? "–"}</td><td>{signed(c[9] as number, 1)}</td></tr>))}</tbody></table></div>
             </div>
           </div>
+          {SH?.players[id] && SHL && (
+            <div className="card mb-6 p-4"><h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted">Shot chart</h2><ShotChart bins={SH.players[id]} league={SHL.bins} /></div>
+          )}
           <div className="card overflow-hidden">
             <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Game log</h2>
             <div className="max-h-[480px] overflow-auto p-2">
