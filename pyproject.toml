@@ -10,3 +10,8 @@ pythonpath = ["."]
 
 [tool.setuptools]
 packages = []
+
+[dependency-groups]
+dev = [
+    "playwright>=1.63.0",
+]

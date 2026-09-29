@@ -7,3 +7,14 @@ warehouse:
 	uv run python -m pipeline.warehouse.build
 test:
 	uv run pytest -q
+ratings:
+	uv run python -m pipeline.models.data
+	uv run python -m pipeline.models.tune tempo
+	uv run python -m pipeline.models.tune eff
+	uv run python -m pipeline.models.backtest
+	uv run python -m pipeline.models.evaluate
+site:
+	uv run python -m pipeline.export.contract
+	cd web && npx next build
+shots:
+	uv run python -m pipeline.tools.shots

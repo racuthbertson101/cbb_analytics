@@ -66,6 +66,10 @@ def run_season(S: int):
         rat.append(t)
 
     pr = block_predict(sd, cfg, prior, 1, hook)
+    # end-of-season snapshot (fit on every game of the season) so the final table exists
+    pfin = base_params(cfg)
+    pfin.update(prior)
+    hook(adjeff.fit(sd, len(sd.date), int(sd.date[-1]) + 1, pfin), int(sd.date[-1]) + 1, sd, 0, 0)
     f = sd.frame[["game_id", "a", "b", "site", "pts_a", "pts_b", "poss", "game_type", "neutral_site"]]
     pr = pr.merge(f, on="game_id")
     pr["season"] = S
