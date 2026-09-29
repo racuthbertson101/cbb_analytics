@@ -143,7 +143,7 @@ export default function MethodologyView() {
             {[["adjeff", "Adjusted efficiency"], ["elo", "Elo (margin-aware)"], ["bt", "Bradley-Terry (scaled)"], ["prev", "Previous-season rating"], ["cons", "Consensus"]].map(([k, l]) => (
               <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
           </tbody></table>
-          <p>Learned production weights: {Object.entries(cs.production.weights).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ")}. Honest note: the margin-aware Elo is about as accurate as the ridge model on margin, and the consensus beats both, so the ridge model is the flagship but not dominant.</p>
+          <p>Learned production weights: {Object.entries(cs.production.weights).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ")}. Honest note: the margin-aware Elo is close to the ridge model on margin error and the consensus beats both, so the ridge model is the flagship but not dominant.</p>
         </>)}
       </Section>
 

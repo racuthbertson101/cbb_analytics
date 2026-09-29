@@ -10,6 +10,8 @@ warehouse:
 	$(PY) -m pipeline.players.seasons
 # Full refit of every model artifact and hyperparameter (slow: ~35 min). Run after each season or after a data fix.
 ratings:
+	# pass 1 (lag-only preseason prior) produces the frozen impact-model targets; pass 2 adds the roster prior
+	rm -f data/backtest/roster_feats.pkl data/backtest/impact_targets.parquet
 	$(PY) -m pipeline.models.data
 	$(PY) -m pipeline.models.tune tempo
 	$(PY) -m pipeline.models.tune eff
@@ -17,6 +19,11 @@ ratings:
 	$(PY) -m pipeline.models.evaluate
 	$(PY) -m pipeline.players.prior_eval
 	$(PY) -m pipeline.players.build_players
+	$(PY) -m pipeline.players.roster_prior
+	$(PY) -m pipeline.models.tune eff
+	$(PY) -m pipeline.models.backtest
+	$(PY) -m pipeline.models.evaluate
+	$(PY) -m pipeline.players.rapm_compare
 	$(PY) -m pipeline.models.elo_mle
 	$(PY) -m pipeline.models.bt
 	$(PY) -m pipeline.models.consensus
@@ -26,8 +33,10 @@ site:
 	$(PY) -m pipeline.export.conferences --stats --sim 2026:2026-02-15 2026:2026-04-10
 	$(PY) -m pipeline.export.contract
 	$(PY) -m pipeline.export.players
+	$(PY) -m pipeline.export.shots
 	$(PY) -m pipeline.export.systems
 	$(PY) -m pipeline.export.accuracy
+	$(PY) -m pipeline.export.contract
 	cd web && npx next build
 # Run the whole nightly path as if today were DATE, e.g. make replay DATE=2026-02-15 (then `make site` restores the normal site)
 replay:
