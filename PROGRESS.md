@@ -2,7 +2,7 @@
 
 Status: original build (Phases 0-9 below) is published, but the 2026-09-29 audit (`AUDIT.md`) found real gaps: no Game page, impact v1 not credible, a wrong Big Ten tiebreaker, a fragile prediction log. Current work follows `IMPROVEMENT_PLAN.md` (checklist at the bottom).
 Last completed step: see "Improvement plan" below.
-Blockers: none. Repo https://github.com/racuthbertson101/cbb_analytics created and pushed; Pages, workflow permissions and the `warehouse` release (140 assets, refreshed 2026-10-05) set up.
+Blockers: none. Repo https://github.com/racuthbertson101/cbb_analytics created and pushed; Pages, workflow permissions and the `warehouse` release (139 assets, refreshed 2026-10-05) set up.
 
 Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a manual nightly.yml dispatch both succeeded on 2026-09-29)
 
