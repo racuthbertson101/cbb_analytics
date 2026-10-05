@@ -17,19 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: uv sync && cd web && npm install --no-audit --no-fund
       - run: uv run python -m pipeline.release download
-      - run: |
-          uv run python -m pipeline.export.conferences --stats --sim 2026:2026-02-15 2026:2026-04-10
-          uv run python -m pipeline.export.shots
-          uv run python -m pipeline.export.contract
-          uv run python -m pipeline.export.players
-          uv run python -m pipeline.export.systems
-          uv run python -m pipeline.export.accuracy
-          cd web && npx next build
+      # Same export path as the nightly run, without ingest or logging; no hardcoded simulation dates (AUDIT R-5)
+      - run: uv run python -m pipeline.nightly --force --no-ingest --no-log --base-path /cbb_analytics
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

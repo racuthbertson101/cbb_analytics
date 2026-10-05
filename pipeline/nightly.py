@@ -2,7 +2,7 @@
 
     python -m pipeline.nightly [--today YYYY-MM-DD] [--nsim 20000] [--base-path /cbb_analytics] [--no-build] [--force] [--check]
 
---today runs the whole path "as if" it were that date (replay mode; use with CBB_WAREHOUSE pointing at a truncated warehouse copy).
+--today runs the whole path "as if" it were that date; with --rehearsal it runs against scratch copies (data/rehearsal).
 Season window guard: full run November 1 - April 15; otherwise a light weekly run (Mondays) unless --force.
 Fails loudly (non-zero exit) on any error, so a scheduled job never deploys a broken site.
 """
@@ -30,6 +30,39 @@ def should_run(d: date, force: bool = False) -> bool:
     return force or in_full_window(d) or d.weekday() == 0
 
 
+REHEARSAL = Path(__file__).resolve().parents[1] / "data" / "rehearsal"
+
+
+def setup_rehearsal(today: date, reset: bool = False, root: Path | None = None) -> dict:
+    """Scratch copies of the warehouse, model artifacts and prediction log; returns the env overrides pointing at them.
+
+    Created on first use (or with reset) and truncated to `today` (results on/after it removed, as on a real morning).
+    Later nights reuse the same copy, so consecutive rehearsal nights advance like real ones. The real data/, predictions/
+    and the release are never touched; exports still go to web/public/data (generated, gitignored).
+    """
+    import shutil
+
+    from pipeline.replay import truncate
+
+    base = Path(__file__).resolve().parents[1]
+    r = root or REHEARSAL
+    if reset and r.exists():
+        shutil.rmtree(r)
+    if not r.exists():
+        shutil.copytree(base / "data" / "warehouse", r / "warehouse")
+        shutil.copytree(base / "data" / "backtest", r / "backtest")
+        shutil.copytree(base / "predictions", r / "predictions")
+        if (r / "warehouse" / "mbb" / "games" / f"{season_of(today)}.parquet").exists():
+            log(f"rehearsal: truncated {truncate(r / 'warehouse', season_of(today), pd_ts(today))} games on/after {today}")
+    return {"CBB_WAREHOUSE": str(r / "warehouse"), "CBB_ARTIFACTS": str(r / "backtest"), "CBB_PREDICTION_LOG": str(r / "predictions")}
+
+
+def pd_ts(d: date):
+    import pandas as pd
+
+    return pd.Timestamp(d)
+
+
 def log(msg):
     print(f"[nightly {datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
@@ -44,6 +77,8 @@ def main(argv=None):
     ap.add_argument("--no-log", action="store_true", help="do not append to the prediction log (deploy.yml republishes without logging)")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--rehearsal", action="store_true", help="run against scratch copies in data/rehearsal (see setup_rehearsal)")
+    ap.add_argument("--rehearsal-reset", action="store_true", help="start the rehearsal copy fresh from the real data")
     ap.add_argument("--check", action="store_true", help="only decide whether today is a run day; writes run=true|false to $GITHUB_OUTPUT")
     a = ap.parse_args(argv)
     today = date.fromisoformat(a.today) if a.today else datetime.now(timezone.utc).astimezone().date()
@@ -58,6 +93,9 @@ def main(argv=None):
     if not run:
         log(f"{today} is outside the full-run window and not a Monday: nothing to do")
         return 0
+    if a.rehearsal:  # must happen before any pipeline module reads the path overrides
+        os.environ.update(setup_rehearsal(today, a.rehearsal_reset))
+        log(f"REHEARSAL for {today}: data in {REHEARSAL}; real data, predictions/ and the release are untouched")
     import pandas as pd
 
     wh = Path(os.environ["CBB_WAREHOUSE"]) if os.environ.get("CBB_WAREHOUSE") else Path(__file__).resolve().parents[1] / "data" / "warehouse"
@@ -82,7 +120,7 @@ def main(argv=None):
     t0 = time.time()
     status = {"today": str(today), "season": season, "started": datetime.now(timezone.utc).isoformat()}
 
-    if not live:
+    if not live and not a.no_ingest:
         from pipeline.ingest import download
         from pipeline.warehouse import build as wbuild
 
@@ -195,7 +233,7 @@ def main(argv=None):
         env = dict(os.environ, NEXT_PUBLIC_BASE_PATH=a.base_path)
         subprocess.run("npx next build", cwd=ROOT / "web", shell=True, check=True, env=env)
     status["seconds"] = round(time.time() - t0)
-    (ROOT / "data" / "nightly_status.json").write_text(json.dumps(status, indent=1, default=str))
+    (Path(os.environ["CBB_WAREHOUSE"]).parent if a.rehearsal else ROOT / "data").joinpath("nightly_status.json").write_text(json.dumps(status, indent=1, default=str))
     log(f"done in {status['seconds']}s")
     return 0
 

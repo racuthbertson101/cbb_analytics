@@ -1,24 +1,35 @@
 name: nightly
 # 07:30 UTC is about 3:30 am Eastern, after late West Coast games are final. A season guard inside pipeline.nightly does a full run
 # November 1 - April 15 and a light weekly (Monday) run otherwise. Manual dispatch always runs (force).
+#
+# Jobs:   build ──> deploy   (Pages)
+#            └────> sync     (release upload + prune, prediction log commit)
+# deploy and sync fail independently: a failed release upload never blocks the site, and a failed deploy never loses the log.
+# Rehearsal (dispatch with rehearsal=true): build runs against scratch copies (pipeline.nightly --rehearsal), uploads the built
+# site and the scratch prediction log as a workflow artifact, and deploy and sync are skipped. The live site, the release and
+# predictions/ are untouched.
 on:
   schedule:
     - cron: "30 7 * * *"
   workflow_dispatch:
     inputs:
       today:
-        description: "Replay date YYYY-MM-DD (leave empty for the real date)"
+        description: "Run as if today were YYYY-MM-DD (leave empty for the real date)"
         required: false
       nsim:
         description: "Conference simulations"
         default: "20000"
+      rehearsal:
+        description: "Rehearsal: scratch data, no deploy, no release upload, no log commit"
+        type: boolean
+        default: false
 
 concurrency:
   group: nightly
   cancel-in-progress: false
 
 permissions:
-  contents: write     # release assets (warehouse tag)
+  contents: write     # release assets (warehouse tag) and the prediction log commit
   pages: write
   id-token: write
 
@@ -26,14 +37,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      run: ${{ steps.guard.outputs.run }}
     env:
       GH_TOKEN: ${{ github.token }}
       NEXT_PUBLIC_BASE_PATH: /cbb_analytics
-    outputs:
-      run: ${{ steps.guard.outputs.run }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       # Off days (outside Nov 1 - Apr 15 and not a Monday) end here with a green run; everything below is skipped.
       - name: Is today a run day?
         id: guard
@@ -53,28 +66,48 @@ jobs:
         run: |
           uv sync
           cd web && npm install --no-audit --no-fund
-      - name: Download warehouse tables, model artifacts and prediction log
+      - name: Download warehouse tables and model artifacts
         if: steps.guard.outputs.run == 'true'
         run: uv run python -m pipeline.release download
-      - name: Nightly pipeline (ingest, validate, refit, predict, simulate, export, build)
+      - name: Nightly pipeline (ingest, validate, refit, predict, log, simulate, export, build)
         if: steps.guard.outputs.run == 'true'
         run: |
           ARGS="--nsim ${{ inputs.nsim || 20000 }} --base-path /cbb_analytics"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="$ARGS --force"; fi
           if [ -n "${{ inputs.today }}" ]; then ARGS="$ARGS --today ${{ inputs.today }}"; fi
+          if [ "${{ inputs.rehearsal }}" = "true" ]; then ARGS="$ARGS --rehearsal"; fi
           uv run python -m pipeline.nightly $ARGS
+      - name: Rehearsal output (site and scratch prediction log)
+        if: steps.guard.outputs.run == 'true' && inputs.rehearsal
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-${{ inputs.today || 'today' }}
+          path: |
+            web/out
+            data/rehearsal/predictions
+            data/rehearsal/nightly_status.json
+          retention-days: 7
       - uses: actions/configure-pages@v5
-        if: steps.guard.outputs.run == 'true'
+        if: steps.guard.outputs.run == 'true' && !inputs.rehearsal
       - uses: actions/upload-pages-artifact@v3
-        if: steps.guard.outputs.run == 'true'
+        if: steps.guard.outputs.run == 'true' && !inputs.rehearsal
         with:
           path: web/out
-      - name: Upload updated warehouse, artifacts and prediction log
-        if: steps.guard.outputs.run == 'true'
-        run: uv run python -m pipeline.release upload
+      - name: Hand the updated data to the sync job
+        if: steps.guard.outputs.run == 'true' && !inputs.rehearsal
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-data
+          path: |
+            data/warehouse
+            data/backtest
+            web/public/data/shots
+            predictions
+          retention-days: 1
+
   deploy:
-    needs: build          # any failure above leaves the previous deployment untouched
-    if: needs.build.outputs.run == 'true'
+    needs: build          # a failed build leaves the previous deployment untouched
+    if: needs.build.outputs.run == 'true' && !inputs.rehearsal
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -82,3 +115,34 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  sync:
+    needs: build
+    if: needs.build.outputs.run == 'true' && !inputs.rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sync-data
+          path: .
+      - name: Upload changed warehouse files and artifacts (manifest last), prune old versions
+        run: |
+          uv run python -m pipeline.release upload
+          uv run python -m pipeline.release prune
+      - name: Commit the prediction log
+        run: |
+          uv run python -c "from pipeline.predictions import log; p = log.check(); assert not p, p"
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add predictions
+          if git diff --cached --quiet; then echo "no new predictions"; exit 0; fi
+          git commit -m "predictions: log $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && exit 0; sleep 10; done
+          exit 1

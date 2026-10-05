@@ -2,15 +2,13 @@
 
     python -m pipeline.replay 2026-02-15 [--nsim 3000] [--no-build]
 
-Copies data/warehouse and data/backtest to data/replay/, removes results on/after DATE (future games stay scheduled, exactly like a real
-morning), then runs pipeline.nightly against those copies with ESPN re-ingesting DATE-3 .. DATE+7 (results on/after DATE are masked).
-Exports overwrite web/public/data; run `make site` afterwards to restore the normal site.
+Copies the warehouse, model artifacts and prediction log to data/rehearsal/, removes results on/after DATE (future games stay
+scheduled, exactly like a real morning), then runs pipeline.nightly against those copies with ESPN re-ingesting DATE-3 .. DATE+7
+(results on/after DATE are masked). Exports overwrite web/public/data; `make site` restores the normal site.
 """
 from __future__ import annotations
 
 import argparse
-import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,29 +27,22 @@ def truncate(wh: Path, season: int, cut: pd.Timestamp):
     g.to_parquet(wh / "mbb" / "games" / f"{season}.parquet", index=False)
     for t in ("team_games", "player_games"):
         p = wh / "mbb" / t / f"{season}.parquet"
+        if not p.exists():  # the upcoming season has no box tables yet
+            continue
         d = pd.read_parquet(p)
         d[~d.game_id.isin(drop)].to_parquet(p, index=False)
     return len(drop)
 
 
 def main():
+    """A fresh rehearsal of one date: same as `python -m pipeline.nightly --rehearsal --rehearsal-reset --today DATE --force`."""
     ap = argparse.ArgumentParser()
     ap.add_argument("date")
     ap.add_argument("--nsim", type=int, default=3000)
     ap.add_argument("--no-build", action="store_true")
     a = ap.parse_args()
-    d = pd.Timestamp(a.date)
-    season = d.year + 1 if d.month >= 9 else d.year
-    rep = ROOT / "data" / "replay"
-    if rep.exists():
-        shutil.rmtree(rep)
-    shutil.copytree(ROOT / "data" / "warehouse", rep / "warehouse")
-    shutil.copytree(ROOT / "data" / "backtest", rep / "backtest")
-    n = truncate(rep / "warehouse", season, d)
-    print(f"replay {a.date}: truncated {n} games of season {season}")
-    env = dict(os.environ, CBB_WAREHOUSE=str(rep / "warehouse"), CBB_ARTIFACTS=str(rep / "backtest"), CBB_PREDICTION_LOG=str(rep / "log.parquet"))
-    cmd = [sys.executable, "-m", "pipeline.nightly", "--today", a.date, "--nsim", str(a.nsim), "--force"] + (["--no-build"] if a.no_build else [])
-    subprocess.run(cmd, cwd=ROOT, env=env, check=True)
+    cmd = [sys.executable, "-m", "pipeline.nightly", "--today", a.date, "--nsim", str(a.nsim), "--force", "--rehearsal", "--rehearsal-reset"]
+    subprocess.run(cmd + (["--no-build"] if a.no_build else []), cwd=ROOT, check=True)
 
 
 if __name__ == "__main__":

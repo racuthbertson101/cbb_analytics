@@ -30,15 +30,9 @@ ratings:
 	$(PY) -m pipeline.models.resume
 	$(PY) -m pipeline.sims.make_configs
 site:
-	$(PY) -m pipeline.export.conferences --stats --sim 2026:2026-02-15 2026:2026-04-10
-	$(PY) -m pipeline.export.contract
-	$(PY) -m pipeline.export.players
-	$(PY) -m pipeline.export.shots
-	$(PY) -m pipeline.export.systems
-	$(PY) -m pipeline.export.accuracy
-	$(PY) -m pipeline.export.contract
-	cd web && npx next build
-# Run the whole nightly path as if today were DATE, e.g. make replay DATE=2026-02-15 (then `make site` restores the normal site)
+	# same export path as the nightly run and deploy.yml, without ingest or logging
+	$(PY) -m pipeline.nightly --force --no-ingest --no-log
+# Rehearse the whole nightly path as if today were DATE on scratch copies, e.g. make replay DATE=YYYY-MM-DD (then `make site` restores the normal site)
 replay:
 	$(PY) -m pipeline.replay $(DATE)
 nightly:
