@@ -8,7 +8,7 @@ import { loadJson, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, heat, percentiles, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 export type ConfRow = {
   id: string; name: string; n: number; em: number; off: number; def: number; tempo: number; top_em: number; median_em: number; top4_em: number;

@@ -8,7 +8,7 @@ import { dateIndex } from "@/lib/rankings";
 import { addDays, fmt, pct, prettyDate, seasonOf, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[] };
 

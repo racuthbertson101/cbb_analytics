@@ -160,6 +160,9 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
                          "ar": None if pd.isna(r.away_rank) or r.away_rank > 25 else int(r.away_rank),
                          "hr": None if pd.isna(r.home_rank) or r.home_rank > 25 else int(r.home_rank),
                          "d1": bool(r.both_d1), "note": r.notes if isinstance(r.notes, str) else None,
+                         "dt": None if pd.isna(r.game_datetime) else r.game_datetime.strftime("%Y-%m-%dT%H:%MZ"),
+                         "v": r.venue if isinstance(r.venue, str) else None, "att": None if pd.isna(r.attendance) or not r.attendance else int(r.attendance),
+                         "tv": getattr(r, "tv", None) if isinstance(getattr(r, "tv", None), str) else None,
                          "w": None if pd.isna(r.w) else round(float(r.w), 1),
                          "wc": [None if pd.isna(v) else int(round(v)) for v in (r.w_quality, r.w_competitiveness, r.w_tempo, r.w_star_power, r.w_stakes)] if not pd.isna(r.w) else None})
         write(f"games/{y}.json", {"season": y, "games": rows})

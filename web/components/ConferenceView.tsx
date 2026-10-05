@@ -7,7 +7,7 @@ import { fmt, pct, prettyDate, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
 import type { ConfRow } from "./ConferencesView";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type SRow = { id: string; exp_w: number; cw: number; cg: number; exp_finish: number; finish: number[]; p_title: number; p_share: number; p_qual: number; p_bye: Record<string, number>; best: number; worst: number };
 type Snap = { asof: string; nsim: number; conferences: Record<string, { name: string; n_remaining: number; config: { status: string; rules: string[]; qualifiers: number; bye_seed_lines: number[]; source_url: string | null }; rows: SRow[] }> };

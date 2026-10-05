@@ -5,7 +5,7 @@ import { useJson, useMeta, useTeams } from "@/lib/data";
 import { seasonRange } from "@/lib/format";
 import { fmt, pct, prettyDate, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type M = { n: number; log_loss: number; brier: number; accuracy: number; mae?: number; rmse?: number };
 type Rel = { bin: number; mean_pred: number; obs: number; n: number }[];

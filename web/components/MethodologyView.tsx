@@ -2,7 +2,7 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useJson, useMeta } from "@/lib/data";
 import { seasonRange } from "@/lib/format";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type Sys = { mae?: number; rmse?: number; log_loss: number; brier: number; accuracy: number; n: number };
 type BT = {

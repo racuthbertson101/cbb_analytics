@@ -78,6 +78,7 @@ def parse_scoreboard(d: dict) -> pd.DataFrame:
             "tournament_id": (e.get("tournamentId") or c.get("tournamentId")), "notes_headline": notes[0].get("headline") if notes else None,
             "type_abbreviation": (c.get("type") or {}).get("abbreviation"), "home_rank": rank(comp["home"]), "away_rank": rank(comp["away"]),
             "venue": (c.get("venue") or {}).get("fullName"), "attendance": c.get("attendance"),
+            "tv": ", ".join(n for b in c.get("broadcasts") or [] for n in b.get("names") or []) or None,
             "home_team": comp["home"]["team"], "away_team": comp["away"]["team"],
         })
     return pd.DataFrame(rows)
@@ -233,7 +234,8 @@ def merge_into_warehouse(season: int, B: pd.DataFrame, T: pd.DataFrame, P: pd.Da
         "completed": B.completed.values, "status": B.status.values, "neutral_site": B.neutral_site.values, "neutral_known": True,
         "conference_game": B.conference_game.values, "season_type": B.season_type.values, "tournament_id": pd.to_numeric(B.tournament_id, errors="coerce").values,
         "notes": B.notes_headline.values, "home_conf_id": B.home_id.map(conf).values, "away_conf_id": B.away_id.map(conf).values,
-        "home_rank": B.home_rank.values, "away_rank": B.away_rank.values, "venue": B.venue.values, "attendance": B.attendance.values})
+        "home_rank": B.home_rank.values, "away_rank": B.away_rank.values, "venue": B.venue.values, "attendance": B.attendance.values,
+        "tv": B.tv.values if "tv" in B else None})
     cls = pd.DataFrame({"notes_headline": B.notes_headline.values, "season_type": B.season_type.values, "type_abbreviation": B.type_abbreviation.values,
                         "home_conference_id": new.home_conf_id.values, "away_conference_id": new.away_conf_id.values, "neutral_site": B.neutral_site.values,
                         "game_date": B.game_date.values, "tournament_id": new.tournament_id.values}, index=new.index)

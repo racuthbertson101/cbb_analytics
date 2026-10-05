@@ -9,7 +9,7 @@ import { fmt, heat, percentiles, prettyDate, seasonLabel, signed } from "@/lib/u
 import TeamLogo from "./TeamLogo";
 import site from "@/config/site.json";
 import Sparkline from "./Sparkline";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 export const shortConf = (c?: string) =>
   (c || "")

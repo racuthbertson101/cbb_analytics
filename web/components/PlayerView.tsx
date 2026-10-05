@@ -7,7 +7,7 @@ import { usePlayers } from "@/lib/players";
 import { fmt, heat, prettyDate, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
 import ShotChart, { Bins } from "./ShotChart";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 const IMP_TIP = "Experimental box-score rating (points per 100 possessions vs an average D-I player). Known bias: it overrates rebounders and shot blockers (centers average about +14, guards about -2), so compare players at the same position only.";
 

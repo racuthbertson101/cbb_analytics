@@ -9,7 +9,7 @@ import { shortConf } from "./RankingsView";
 import { usePlayers } from "@/lib/players";
 import ShotChart, { Bins } from "./ShotChart";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type Stats = { rows: Record<string, Record<string, number>> };
 type RankRows = { rows: { id: string; conf: string; w: number; l: number; cw: number; cl: number; off: number; def: number; margin: number }[] };

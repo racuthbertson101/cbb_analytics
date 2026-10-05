@@ -7,7 +7,7 @@ import { useMeta, useTeams } from "@/lib/data";
 import { P, usePlayers } from "@/lib/players";
 import { fmt, heat, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 const POS = ["All", "G", "F", "C"];
 const posGroup = (p: unknown) => {

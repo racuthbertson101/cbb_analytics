@@ -149,7 +149,7 @@ def build_season(y: int, d1_prev: set | None = None):
     s = s.drop_duplicates("game_id", keep="last").copy()
     for c in ["home_conference_id", "away_conference_id", "neutral_site", "tournament_id", "notes_headline",
               "type_abbreviation", "conference_competition", "home_current_rank", "away_current_rank",
-              "team_box", "player_box", "PBP", "venue_full_name", "attendance"]:
+              "team_box", "player_box", "PBP", "venue_full_name", "attendance", "broadcast_name"]:
         if c not in s:
             s[c] = np.nan
     s["game_id"] = s.game_id.astype(str)
@@ -169,6 +169,7 @@ def build_season(y: int, d1_prev: set | None = None):
         "home_conf_id": s.home_conference_id, "away_conf_id": s.away_conference_id,
         "home_rank": s.home_current_rank, "away_rank": s.away_current_rank,
         "venue": s.venue_full_name, "attendance": s.attendance,
+        "tv": s.broadcast_name.where(s.broadcast_name.fillna("").str.len() > 0),
     })
     games["game_type"] = classify_game_type(s.assign(game_date=games.game_date)).values
     games["neutral_site"] = force_neutral(games.game_type, games.notes, games.neutral_site)

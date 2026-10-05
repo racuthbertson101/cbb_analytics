@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Ratings, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, pct, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
-import SeasonChip from "./SeasonChip";
+import SeasonChip from "./ui/SeasonChip";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number };
 type Pred = { sigma_coef: number[]; cal_x: number[]; cal_y: number[]; q10: number; q90: number; score_q10: number; score_q90: number };

@@ -22,11 +22,17 @@ def live_summary():
     seasons = sorted({int(str(d)[:4]) + (1 if int(str(d)[5:7]) >= 9 else 0) for d in L.game_date})
     G = pd.concat([pd.read_parquet(table_path("games", y)) for y in seasons if table_path("games", y).exists()])
     S = log.scored(L, G)  # last prediction made before tip-off, per game
+    # per-game badge for the Game page: the scored prediction's time, hash prefix and values
+    S["season"] = [int(str(d)[:4]) + (1 if int(str(d)[5:7]) >= 9 else 0) for d in S.game_date.astype(str)]
+    for y, grp in S.groupby("season"):
+        write(f"accuracy/logged/{y}.json", {"v": 1, "cols": ["made_at", "hash", "p", "pm", "days_before"],
+                                            "games": {r.game_id: [r.made_at, r.row_hash[:12], round(float(r.p), 4), round(float(r.pm), 2), int(r.days_before)]
+                                                      for r in grp.itertuples()}})
     m = S.merge(G[["game_id", "completed", "home_score", "away_score"]], on="game_id", how="left")
     done = m[m.completed.fillna(False).astype(bool)]
     out = {"n_logged": int(len(L)), "n_games": int(L.game_id.nunique()), "n_resolved": int(len(done)), "verified": not problems, "problems": problems,
            "first_logged": str(L.made_at.min()), "last_logged": str(L.made_at.max()),
-           "scoring": "last prediction made before tip-off"}
+           "scoring": "last prediction made before tip-off", "logged_seasons": sorted(int(x) for x in S.season.unique())}
     if len(done):
         y = (done.home_score > done.away_score).astype(float).values
         p = done.p.astype(float).values
