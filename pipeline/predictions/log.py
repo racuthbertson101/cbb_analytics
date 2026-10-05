@@ -1,7 +1,15 @@
-"""Append-only prediction log. Predictions are written before games start and never edited.
+"""Append-only prediction log, stored in git so it cannot be lost or rewritten silently (AUDIT R-1).
 
-Each row carries a hash chained to the previous row, so any later edit or deletion is detectable with verify().
-Evaluation always uses the FIRST logged prediction for a game (the earliest, so it cannot be updated after the fact).
+Layout (repo root, committed by the nightly workflow's sync job):
+    predictions/log/YYYY/MM-DD.csv   rows written on that UTC date (each night adds a file; rows are never edited)
+    predictions/HEAD.json            {"rows": n, "last_hash": ...}: the chain head after the latest append
+
+Every row carries a SHA-256 hash chained to the previous row. verify() recomputes the chain and fails when a row was
+edited, when rows are missing (the log is shorter than HEAD), or when HEAD itself is missing while rows exist. Because
+both the rows and HEAD are in git history, rewriting the past also shows up as a rewritten commit.
+
+Every night logs a prediction for every scheduled game in the next 7 days (AUDIT R-3). Scoring uses, for each game, the
+LAST prediction made before tip-off (`scored()`), so the live accuracy measures next-day predictions like the backtest.
 """
 from __future__ import annotations
 
@@ -14,49 +22,106 @@ import pandas as pd
 
 from pipeline.warehouse.paths import ROOT
 
-LOG = Path(os.environ["CBB_PREDICTION_LOG"]) if os.environ.get("CBB_PREDICTION_LOG") else ROOT / "data" / "predictions" / "log.parquet"
+DIR = Path(os.environ["CBB_PREDICTION_LOG"]) if os.environ.get("CBB_PREDICTION_LOG") else ROOT / "predictions"
 FIELDS = ["game_id", "made_at", "game_date", "home_id", "away_id", "neutral", "pm", "ph", "pa", "p", "model_version"]
+STR = ["game_id", "made_at", "game_date", "home_id", "away_id", "model_version"]
+DECIMALS = {"pm": 2, "ph": 2, "pa": 2, "p": 4}  # DEFINITION: stored precision; rounding first makes CSV round trips hash-stable
+SCHEMA = 2  # 1 = the old parquet log with plo/phi (never had live rows); 2 = git CSV log
+
+
+def _canon(r: dict) -> dict:
+    out = {k: str(r[k]) for k in STR}
+    out["neutral"] = bool(r["neutral"]) if not isinstance(r["neutral"], str) else r["neutral"] == "True"
+    out.update({k: round(float(r[k]), d) for k, d in DECIMALS.items()})
+    return out
 
 
 def _hash(prev: str, row: dict) -> str:
-    payload = prev + json.dumps({k: (None if pd.isna(row[k]) else row[k]) for k in FIELDS}, sort_keys=True, default=str)
-    return hashlib.sha256(payload.encode()).hexdigest()
+    return hashlib.sha256((prev + json.dumps(row, sort_keys=True)).encode()).hexdigest()
 
 
-def read() -> pd.DataFrame:
-    return pd.read_parquet(LOG) if LOG.exists() else pd.DataFrame(columns=FIELDS + ["row_hash"])
+def _files(d: Path) -> list[Path]:
+    return sorted((d / "log").glob("*/*.csv"))
 
 
-def append(new: pd.DataFrame, made_at: str, log_path=None) -> int:
-    """Append predictions for games that have not started. Games already logged are skipped (never overwritten)."""
-    path = log_path or LOG
-    old = pd.read_parquet(path) if path.exists() else pd.DataFrame(columns=FIELDS + ["row_hash"])
-    have = set(old.game_id.astype(str))
-    new = new[~new.game_id.astype(str).isin(have)].copy()
+def _head(d: Path) -> dict | None:
+    p = d / "HEAD.json"
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def read(log_dir: Path | None = None) -> pd.DataFrame:
+    d = log_dir or DIR
+    fs = _files(d)
+    if not fs:
+        return pd.DataFrame(columns=FIELDS + ["row_hash"])
+    return pd.concat([pd.read_csv(f, dtype={k: str for k in STR + ["row_hash"]}) for f in fs], ignore_index=True)
+
+
+def append(new: pd.DataFrame, made_at: str, log_dir: Path | None = None) -> int:
+    """Log one prediction per game for this run. A game already logged on the same UTC date (a re-run) is skipped."""
+    d = log_dir or DIR
+    problems = check(d)
+    if problems:
+        raise RuntimeError(f"refusing to append to a log that fails verification: {problems}")
+    old = read(d)
+    day = made_at[:10]
+    have = set(old.game_id[old.made_at.str[:10] == day]) if len(old) else set()
+    new = new.assign(made_at=made_at, game_id=new.game_id.astype(str))
+    new = new[~new.game_id.isin(have)].drop_duplicates("game_id")
     if new.empty:
         return 0
-    new["made_at"] = made_at
-    new["game_id"] = new.game_id.astype(str)
-    prev = old.row_hash.iloc[-1] if len(old) else "genesis"
-    rows = []
+    head = _head(d) or {"rows": 0, "last_hash": "genesis"}
+    prev, rows = head["last_hash"], []
     for r in new[FIELDS].to_dict("records"):
-        prev = _hash(prev, r)
-        rows.append({**r, "row_hash": prev})
-    out = pd.concat([old, pd.DataFrame(rows)], ignore_index=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    out.to_parquet(path, index=False)
+        c = _canon(r)
+        prev = _hash(prev, c)
+        rows.append({**c, "row_hash": prev})
+    f = d / "log" / day[:4] / f"{day[5:]}.csv"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows, columns=FIELDS + ["row_hash"]).to_csv(f, mode="a", header=not f.exists(), index=False)
+    (d / "HEAD.json").write_text(json.dumps({"rows": head["rows"] + len(rows), "last_hash": prev, "updated": made_at, "schema": SCHEMA}, indent=1))
     return len(rows)
 
 
-def verify(log_path=None) -> bool:
-    path = log_path or LOG
-    if not path.exists():
-        return True
-    df = pd.read_parquet(path)
+def check(log_dir: Path | None = None) -> list[str]:
+    """Problems with the log (empty list = intact)."""
+    d = log_dir or DIR
+    head, fs = _head(d), _files(d)
+    if head is None:
+        return ["rows exist but predictions/HEAD.json is missing"] if fs else []
+    df = read(d)
+    if len(df) < head["rows"]:
+        return [f"log has {len(df)} rows but HEAD says {head['rows']} (rows deleted or files missing)"]
+    if len(df) > head["rows"]:
+        return [f"log has {len(df)} rows but HEAD says {head['rows']} (rows added without updating HEAD)"]
     prev = "genesis"
-    for r in df[FIELDS + ["row_hash"]].to_dict("records"):
-        h = r.pop("row_hash")
-        prev = _hash(prev, r)
-        if prev != h:
-            return False
-    return True
+    for i, r in enumerate(df.to_dict("records")):
+        prev = _hash(prev, _canon(r))
+        if prev != r["row_hash"]:
+            return [f"row {i} (game {r['game_id']}, made {r['made_at']}) does not match its hash: edited"]
+    if head["rows"] and prev != head["last_hash"]:
+        return ["chain end does not match HEAD.last_hash"]
+    return []
+
+
+def verify(log_dir: Path | None = None) -> bool:
+    return not check(log_dir)
+
+
+def scored(L: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
+    """The scored prediction per game: the last one made before tip-off, with days_before (game date minus made date).
+
+    games needs game_id, game_date and game_datetime (UTC, naive). Without a tip-off time the game is assumed to start at
+    16:00 UTC (11 am / noon Eastern) on its date.
+    DEFINITION: 16:00 UTC is a conservative earliest-tip default, not a fitted value.
+    """
+    if L.empty:
+        return L.assign(days_before=pd.Series(dtype=int))
+    g = games[["game_id", "game_date", "game_datetime"]].copy()
+    g["tip"] = g.game_datetime.fillna(pd.to_datetime(g.game_date) + pd.Timedelta(hours=16))
+    m = L.drop(columns=["game_date"]).merge(g, on="game_id", how="inner")
+    made = pd.to_datetime(m.made_at, utc=True).dt.tz_localize(None)
+    m = m[made < m.tip].assign(_made=made[made < m.tip])
+    m = m.sort_values(["game_id", "_made"]).drop_duplicates("game_id", keep="last")
+    m["days_before"] = (pd.to_datetime(m.game_date).dt.normalize() - m._made.dt.normalize()).dt.days
+    return m.drop(columns=["_made", "tip"])

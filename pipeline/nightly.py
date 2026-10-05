@@ -40,7 +40,8 @@ def main(argv=None):
     ap.add_argument("--nsim", type=int, default=20000)
     ap.add_argument("--base-path", default=os.environ.get("NEXT_PUBLIC_BASE_PATH", ""))
     ap.add_argument("--no-build", action="store_true")
-    ap.add_argument("--no-ingest", action="store_true")
+    ap.add_argument("--no-ingest", action="store_true", help="skip ESPN ingest and the offseason schedule refresh (rebuild exports and site only)")
+    ap.add_argument("--no-log", action="store_true", help="do not append to the prediction log (deploy.yml republishes without logging)")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--check", action="store_true", help="only decide whether today is a run day; writes run=true|false to $GITHUB_OUTPUT")
@@ -147,10 +148,14 @@ def main(argv=None):
             new = pd.DataFrame({"game_id": up.game_id.values, "game_date": up.game_date.astype(str).values, "home_id": up.home_id.values, "away_id": up.away_id.values,
                                 "neutral": up.neutral_site.values, "pm": fp.pm.values, "ph": fp.ph.values, "pa": fp.pa.values, "p": fp.p.values,
                                 "model_version": "adjeff-v1"})
-            status["logged"] = plog.append(new, datetime.now(timezone.utc).isoformat())
+            # a replay/rehearsal of a past date is stamped at that date's scheduled run time, so tip-off ordering stays real
+            made_at = datetime.now(timezone.utc).isoformat() if a.today is None else f"{today}T07:30:00+00:00"
+            status["logged"] = 0 if a.no_log else plog.append(new, made_at)
         else:
             status["logged"] = 0
-        assert plog.verify(), "prediction log failed verification"
+        problems = plog.check()
+        if problems:
+            raise SystemExit(f"prediction log failed verification: {problems}")
 
         # 6. conference simulations as of today (before exports: watchability uses title leverage)
         conferences.sim_standings(season, str(today), nsim=a.nsim, workers=a.workers, keep_only=True)

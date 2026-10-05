@@ -10,7 +10,7 @@ import SeasonChip from "./SeasonChip";
 type M = { n: number; log_loss: number; brier: number; accuracy: number; mae?: number; rmse?: number };
 type Rel = { bin: number; mean_pred: number; obs: number; n: number }[];
 type Bucket = { bucket: string; n: number; mean_conf: number; accuracy: number }[];
-type Live = { n_logged: number; n_resolved: number; verified: boolean; message?: string; first_logged?: string; last_logged?: string; metrics?: M; reliability?: Rel; buckets?: Bucket; ece?: number };
+type Live = { n_logged: number; n_games?: number; n_resolved: number; verified: boolean; problems?: string[]; days_before?: { days: number; n: number }[]; message?: string; first_logged?: string; last_logged?: string; metrics?: M; reliability?: Rel; buckets?: Bucket; ece?: number };
 type BT = { per_season: Record<string, M>; reliability_last3: Rel; ece_last3: number; buckets_last3: Bucket; last3_seasons: number[] };
 type Recent = { rows: { d: string; a: string; h: string; pm: number; p: number; m: number; n: boolean }[] };
 
@@ -62,7 +62,7 @@ export default function PredictionsView() {
   return (
     <div>
       <h1 className="text-3xl font-semibold">Predictions &amp; accuracy<SeasonChip season={meta?.current_season} /></h1>
-      <p className="mb-6 mt-1 max-w-3xl text-muted">Every prediction is logged before the game starts in an append-only, hash-chained log and never edited. The first logged prediction for a game is the one that is scored.</p>
+      <p className="mb-6 mt-1 max-w-3xl text-muted">Every night the model logs a prediction for each game in the next seven days. The log is append-only and hash-chained, and it is committed to the public repository, so nothing in it can be edited or deleted unnoticed. Each game is scored on the last prediction made before tip-off, usually the morning of the game, which is how the backtest below is scored too.</p>
 
       <section className="mb-8">
         <h2 className="mb-3 text-xl font-semibold">Live scoreboard</h2>
@@ -71,12 +71,15 @@ export default function PredictionsView() {
         ) : (
           <>
             <div className="mb-4 grid grid-cols-5 gap-4">
-              <Stat label="Predictions logged" value={live.n_logged.toLocaleString()} sub={`${live.n_resolved} resolved`} />
+              <Stat label="Games scored" value={live.n_resolved.toLocaleString()} sub={`${live.n_logged.toLocaleString()} predictions logged for ${(live.n_games ?? 0).toLocaleString()} games`} />
               <Stat label="Accuracy" value={live.metrics ? pct(live.metrics.accuracy, 1) : "–"} />
               <Stat label="Log loss" value={live.metrics ? fmt(live.metrics.log_loss, 4) : "–"} />
               <Stat label="MAE (margin)" value={live.metrics?.mae ? fmt(live.metrics.mae, 2) : "–"} />
-              <Stat label="Log integrity" value={live.verified ? "Verified" : "BROKEN"} sub="hash chain check" />
+              <Stat label="Log integrity" value={live.verified ? "Verified" : "BROKEN"} sub={live.verified ? "hash chain matches the committed head" : (live.problems ?? []).join("; ")} />
             </div>
+            {live.days_before && live.days_before.length > 0 && (
+              <p className="mb-4 text-xs text-muted">Scored prediction made: {live.days_before.map((x) => `${x.days === 0 ? "same day" : x.days === 1 ? "1 day before" : `${x.days} days before`} ${x.n.toLocaleString()}`).join(" · ")}</p>
+            )}
             {live.reliability && live.buckets && <div className="grid grid-cols-2 gap-4"><Calibration rel={live.reliability} title="Live calibration" /><Buckets b={live.buckets} /></div>}
           </>
         )}

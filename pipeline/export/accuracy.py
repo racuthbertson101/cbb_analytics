@@ -14,15 +14,19 @@ from .contract import write
 
 def live_summary():
     L = log.read()
+    problems = log.check()
     if L.empty:
-        write("accuracy/live.json", {"n_logged": 0, "n_resolved": 0, "verified": True, "message": "No live predictions logged yet. The log starts when the season opens and is append-only."})
+        write("accuracy/live.json", {"n_logged": 0, "n_resolved": 0, "verified": not problems, "problems": problems,
+                                     "message": "No live predictions logged yet. The log starts when the season opens and is append-only."})
         return
     seasons = sorted({int(str(d)[:4]) + (1 if int(str(d)[5:7]) >= 9 else 0) for d in L.game_date})
     G = pd.concat([pd.read_parquet(table_path("games", y)) for y in seasons if table_path("games", y).exists()])
-    L = L.drop_duplicates("game_id", keep="first")  # first (earliest) prediction per game
-    m = L.merge(G[["game_id", "completed", "home_score", "away_score", "game_datetime"]], on="game_id", how="left")
-    done = m[m.completed.fillna(False)]
-    out = {"n_logged": int(len(L)), "n_resolved": int(len(done)), "verified": bool(log.verify()), "first_logged": str(L.made_at.min()), "last_logged": str(L.made_at.max())}
+    S = log.scored(L, G)  # last prediction made before tip-off, per game
+    m = S.merge(G[["game_id", "completed", "home_score", "away_score"]], on="game_id", how="left")
+    done = m[m.completed.fillna(False).astype(bool)]
+    out = {"n_logged": int(len(L)), "n_games": int(L.game_id.nunique()), "n_resolved": int(len(done)), "verified": not problems, "problems": problems,
+           "first_logged": str(L.made_at.min()), "last_logged": str(L.made_at.max()),
+           "scoring": "last prediction made before tip-off"}
     if len(done):
         y = (done.home_score > done.away_score).astype(float).values
         p = done.p.astype(float).values
@@ -30,7 +34,9 @@ def live_summary():
         rel, ece = reliability(p, y)
         done = done.assign(day=done.game_date.astype(str))
         daily = done.groupby("day").apply(lambda d: {"day": d.name, "n": len(d), "correct": int(((d.p > 0.5) == (d.home_score > d.away_score)).sum())}, include_groups=False).tolist()
-        out.update({"metrics": mm, "reliability": rel, "ece": ece, "buckets": bucket_table(p, y), "daily": daily})
+        days = done.days_before.value_counts().sort_index()
+        out.update({"metrics": mm, "reliability": rel, "ece": ece, "buckets": bucket_table(p, y), "daily": daily,
+                    "days_before": [{"days": int(k), "n": int(v)} for k, v in days.items()]})
     write("accuracy/live.json", out)
 
 
