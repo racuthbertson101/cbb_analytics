@@ -9,6 +9,7 @@ import { fmt, heat, percentiles, prettyDate, seasonLabel, signed } from "@/lib/u
 import TeamLogo from "./TeamLogo";
 import site from "@/config/site.json";
 import Sparkline from "./Sparkline";
+import SeasonChip from "./SeasonChip";
 
 export const shortConf = (c?: string) =>
   (c || "")
@@ -182,7 +183,7 @@ export default function RankingsView() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Rankings</h1>
+          <h1 className="text-3xl font-semibold">Rankings<SeasonChip season={season} note={upcoming ? "preseason" : undefined} /></h1>
           <p className="mt-1 text-muted">
             Adjusted efficiency (points per 100 possessions vs an average D-I team). {seasonLabel(season || 2026)} · {upcoming ? "preseason projection (last two seasons plus roster changes)" : <>as of {asof ? prettyDate(asof) : "…"}</>}
           </p>

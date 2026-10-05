@@ -8,6 +8,7 @@ import { loadJson, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, heat, percentiles, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 export type ConfRow = {
   id: string; name: string; n: number; em: number; off: number; def: number; tempo: number; top_em: number; median_em: number; top4_em: number;
@@ -80,7 +81,7 @@ export default function ConferencesView() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Conferences</h1>
+          <h1 className="text-3xl font-semibold">Conferences<SeasonChip season={season} /></h1>
           <p className="mt-1 text-muted">Conference strength from members&apos; adjusted efficiency, and how each league did against the others. Membership is as of each season.</p>
         </div>
         <select value={season} onChange={(e) => router.replace(`?season=${e.target.value}`, { scroll: false })}>

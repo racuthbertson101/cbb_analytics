@@ -7,6 +7,7 @@ import { useMeta, useTeams } from "@/lib/data";
 import { P, usePlayers } from "@/lib/players";
 import { fmt, heat, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 const POS = ["All", "G", "F", "C"];
 const posGroup = (p: unknown) => {
@@ -65,7 +66,7 @@ export default function PlayersView() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Players</h1>
+          <h1 className="text-3xl font-semibold">Players<SeasonChip season={season} /></h1>
           <p className="mt-1 text-muted">{seasonLabel(season || 2026)} leaderboards. Impact = fitted box-score rating (points per 100 possessions on the floor vs an average D-I player). Heat = percentile among D-I players with {data?.refMin ?? 300}+ minutes.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

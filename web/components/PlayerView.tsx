@@ -7,6 +7,7 @@ import { usePlayers } from "@/lib/players";
 import { fmt, heat, prettyDate, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
 import ShotChart, { Bins } from "./ShotChart";
+import SeasonChip from "./SeasonChip";
 
 type Logs = { cols: string[]; logs: Record<string, (string | number)[][]> };
 type Career = Record<string, (string | number | null)[][]>;
@@ -43,7 +44,7 @@ export default function PlayerView() {
       <div className="mb-6 flex items-center gap-5">
         <TeamLogo team={team} size={72} />
         <div className="flex-1">
-          <h1 className="text-4xl font-semibold">{p?.name ?? "…"}</h1>
+          <h1 className="text-4xl font-semibold">{p?.name ?? "…"}<SeasonChip season={season} /></h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-muted">
             {team && <Link href={`/team/${team.id}/?season=${season}`} className="chip hover:text-ink">{team.name}</Link>}
             {p?.pos && <span className="chip">{p.pos}</span>}

@@ -7,11 +7,12 @@ import { fmt, pct, prettyDate, seasonLabel, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
 import type { ConfRow } from "./ConferencesView";
+import SeasonChip from "./SeasonChip";
 
 type SRow = { id: string; exp_w: number; cw: number; cg: number; exp_finish: number; finish: number[]; p_title: number; p_share: number; p_qual: number; p_bye: Record<string, number>; best: number; worst: number };
 type Snap = { asof: string; nsim: number; conferences: Record<string, { name: string; n_remaining: number; config: { status: string; rules: string[]; qualifiers: number; bye_seed_lines: number[]; source_url: string | null }; rows: SRow[] }> };
 type TB = { rows: { id: string; conference: string; status: string; rules: string[]; qualifiers: number; source_url: string | null; notes: string | null; researched: string }[] };
-type RK = { rows: { id: string; conf: string; w: number; l: number; cw: number; cl: number; off: number; def: number; margin: number; tempo: number; sos: number | null }[] };
+type RK = { asof?: string; rows: { id: string; conf: string; w: number; l: number; cw: number; cl: number; off: number; def: number; margin: number; tempo: number; sos: number | null }[] };
 
 const RULE_TEXT: Record<string, string> = {
   h2h: "Head-to-head record among the tied teams", vs_standings: "Record vs the highest-placed teams outside the tie, going down the standings",
@@ -67,7 +68,7 @@ export default function ConferenceView({ id }: { id: string }) {
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <Link href="/conferences/" className="text-xs text-muted hover:text-accent">← All conferences</Link>
-          <h1 className="text-4xl font-semibold">{confName || "Conference"}</h1>
+          <h1 className="text-4xl font-semibold">{confName || "Conference"}<SeasonChip season={season} /></h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-muted">
             {cstat && <span className="chip">#{cstat.rank} of {CS?.rows.length} by avg AdjEM</span>}
             {cstat && <span className="chip">Avg AdjEM {signed(cstat.em, 1)}</span>}
@@ -135,7 +136,7 @@ export default function ConferenceView({ id }: { id: string }) {
 
       <div className="mb-6 grid grid-cols-3 gap-6">
         <div className="card col-span-2 overflow-hidden">
-          <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Power ranking · {seasonLabel(season || 2026)}</h2>
+          <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Power ranking · ratings as of {RKD?.asof ? prettyDate(RKD.asof) : seasonLabel(season || 2026)}</h2>
           <div className="p-2">
             <table className="dense">
               <thead><tr><th>#</th><th className="l">Team</th><th>W-L</th><th>Conf</th><th>AdjEM</th><th>AdjO</th><th>AdjD</th><th>Tempo</th><th>SOS</th></tr></thead>

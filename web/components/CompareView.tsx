@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Ratings, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, pct, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number };
 type Pred = { sigma_coef: number[]; cal_x: number[]; cal_y: number[]; q10: number; q90: number; score_q10: number; score_q90: number };
@@ -54,7 +55,7 @@ export default function CompareView() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="text-3xl font-semibold">Compare</h1>
+      <h1 className="text-3xl font-semibold">Compare<SeasonChip season={season} note={upcoming ? "preseason" : undefined} /></h1>
       <p className="mb-6 mt-1 text-muted">Pick any two teams and a site to get the model&apos;s prediction using ratings at the end of the chosen season (or the preseason projection).</p>
       <div className="card mb-6 grid grid-cols-[1fr_auto_1fr] items-end gap-4 p-5">
         {[["a", a, ta], ["b", b, tb]].map(([k, v, t], idx) => (

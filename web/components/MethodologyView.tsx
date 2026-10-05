@@ -1,6 +1,8 @@
 "use client";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
-import { useJson } from "@/lib/data";
+import { useJson, useMeta } from "@/lib/data";
+import { seasonRange } from "@/lib/format";
+import SeasonChip from "./SeasonChip";
 
 type Sys = { mae?: number; rmse?: number; log_loss: number; brier: number; accuracy: number; n: number };
 type BT = {
@@ -33,6 +35,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function MethodologyView() {
+  const meta = useMeta();
   const bt = useJson<BT>("params/backtest.json").data;
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
@@ -42,7 +45,7 @@ export default function MethodologyView() {
   const el = useJson<Record<string, { K: number; hca: number; carry: number; cap: number }>>("params/elo_mle.json").data;
   return (
     <div className="mx-auto max-w-[1100px]">
-      <h1 className="mb-2 text-3xl font-semibold">Methodology</h1>
+      <h1 className="mb-2 text-3xl font-semibold">Methodology<SeasonChip season={meta?.current_season} note="latest fit" /></h1>
       <p className="mb-6 text-muted">Every fitted number on this page is generated from the pipeline&apos;s parameter files, so it cannot go stale. Definitions and judgment calls are labeled as such.</p>
 
       <Section title="Data">
@@ -76,7 +79,7 @@ export default function MethodologyView() {
       </Section>
 
       <Section title="Backtest (walk-forward, no leakage)">
-        <p>For every game in {bt ? `${bt.test_seasons[0]}-${bt.test_seasons[1]}` : "…"} the model is refit each game day on earlier games only. Hyperparameters for season S are chosen using seasons before S; the spread model and calibrator for S are fit on predictions from seasons before S. A test in the repository proves that changing the results of a game (or of any game on the same day or later) does not change earlier predictions.</p>
+        <p>For every game in {bt ? seasonRange(bt.test_seasons[0], bt.test_seasons[1]) : "…"} the model is refit each game day on earlier games only. Hyperparameters for season S are chosen using seasons before S; the spread model and calibrator for S are fit on predictions from seasons before S. A test in the repository proves that changing the results of a game (or of any game on the same day or later) does not change earlier predictions.</p>
         {bt ? (
           <>
             <table className="dense prose">
@@ -139,7 +142,7 @@ export default function MethodologyView() {
         <p><b className="text-ink">Résumé metrics.</b> Wins above bubble, strength of record and quadrant records, computed with our adjusted-efficiency rating in place of NET. They are definitions: bubble = rank 45, SOR reference = average of the top 25, quadrant cutoffs = NCAA rank bands by site.</p>
         <p><b className="text-ink">Consensus.</b> Non-negative least squares on held-out margin error over adjusted efficiency, Elo, Bradley-Terry and last season&apos;s rating; team ratings are blended with the (renormalized) learned weights, and a mean-rank column averages the systems&apos; ranks.</p>
         {cs && (<>
-          <table className="dense prose"><thead><tr><th className="l">System (test seasons {cs.test_seasons[0]}-{cs.test_seasons[1]})</th><th>MAE</th><th>RMSE</th><th>Log loss</th></tr></thead><tbody>
+          <table className="dense prose"><thead><tr><th className="l">System (test seasons {seasonRange(cs.test_seasons[0], cs.test_seasons[1])})</th><th>MAE</th><th>RMSE</th><th>Log loss</th></tr></thead><tbody>
             {[["adjeff", "Adjusted efficiency"], ["elo", "Elo (margin-aware)"], ["bt", "Bradley-Terry (scaled)"], ["prev", "Previous-season rating"], ["cons", "Consensus"]].map(([k, l]) => (
               <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
           </tbody></table>
@@ -162,7 +165,7 @@ export default function MethodologyView() {
             <tr><td className="l">Next-season team defense RMSE</td><td>{pl.prior_evaluation.rmse_d_base.toFixed(3)} vs {pl.prior_evaluation.rmse_d_full.toFixed(3)} (better in {pl.prior_evaluation.seasons_d_improved}/14 seasons)</td></tr>
           </tbody></table>
           <p><b className="text-ink">Decision:</b> {pl.decision}</p>
-          {rp && <p><b className="text-ink">Versus published NCAA RAPM (2011-2020, {rp.pooled.n.toLocaleString()} matched players with 300+ minutes):</b> correlation with the box-score impact is {rp.pooled.corr_net.toFixed(2)} overall (offense {rp.pooled.corr_off.toFixed(2)}, defense {rp.pooled.corr_def.toFixed(2)}; Spearman {rp.pooled.spearman_net.toFixed(2)}). Box scores capture only a modest share of what on/off-based RAPM sees, especially on defense. RAPM is a comparison only and is not used in any rating.</p>}
+          {rp && <p><b className="text-ink">Versus published NCAA RAPM ({seasonRange(2011, 2020)}, {rp.pooled.n.toLocaleString()} matched players with 300+ minutes):</b> correlation with the box-score impact is {rp.pooled.corr_net.toFixed(2)} overall (offense {rp.pooled.corr_off.toFixed(2)}, defense {rp.pooled.corr_def.toFixed(2)}; Spearman {rp.pooled.spearman_net.toFixed(2)}). Box scores capture only a modest share of what on/off-based RAPM sees, especially on defense. RAPM is a comparison only and is not used in any rating.</p>}
           <p>Caveats: impact is model-relative, its scale is likely overstated for extreme rebounders and shot blockers, and defense is only weakly identified from box scores (R² about 0.45).</p>
         </>)}
       </Section>

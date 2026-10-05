@@ -8,6 +8,7 @@ import { dateIndex } from "@/lib/rankings";
 import { addDays, fmt, pct, prettyDate, seasonOf, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[] };
 
@@ -137,7 +138,7 @@ export default function TodayView() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">{replay ? "Replay" : day === new Date().toISOString().slice(0, 10) ? "Today" : "Games"}: {day ? prettyDate(day) : "…"}</h1>
+          <h1 className="text-3xl font-semibold">{replay ? "Replay" : day === new Date().toISOString().slice(0, 10) ? "Today" : "Games"}: {day ? prettyDate(day) : "…"}<SeasonChip season={day ? seasonOf(day) : null} /></h1>
           <p className="mt-1 text-muted">Predicted score, win probability and result versus expectation for every game.</p>
         </div>
         <div className="flex items-center gap-2">

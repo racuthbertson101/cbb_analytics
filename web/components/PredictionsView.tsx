@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
-import { useJson, useTeams } from "@/lib/data";
+import { useJson, useMeta, useTeams } from "@/lib/data";
+import { seasonRange } from "@/lib/format";
 import { fmt, pct, prettyDate, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 type M = { n: number; log_loss: number; brier: number; accuracy: number; mae?: number; rmse?: number };
 type Rel = { bin: number; mean_pred: number; obs: number; n: number }[];
@@ -52,12 +54,14 @@ export default function PredictionsView() {
   const { map } = useTeams();
   const live = useJson<Live>("accuracy/live.json").data;
   const bt = useJson<BT>("accuracy/backtest.json").data;
+  const meta = useMeta();
+  const btSeasons = bt ? Object.keys(bt.per_season).map(Number).sort((a, b) => a - b) : [];
   const recent = useJson<Recent>("accuracy/recent.json").data;
   const all = useJson<{ systems: Record<string, M>; ece: number }>("params/backtest.json").data;
   const cal = all?.systems["adjeff (calibrated)"];
   return (
     <div>
-      <h1 className="text-3xl font-semibold">Predictions &amp; accuracy</h1>
+      <h1 className="text-3xl font-semibold">Predictions &amp; accuracy<SeasonChip season={meta?.current_season} /></h1>
       <p className="mb-6 mt-1 max-w-3xl text-muted">Every prediction is logged before the game starts in an append-only, hash-chained log and never edited. The first logged prediction for a game is the one that is scored.</p>
 
       <section className="mb-8">
@@ -79,7 +83,7 @@ export default function PredictionsView() {
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-1 text-xl font-semibold">Walk-forward backtest (2012-2026)</h2>
+        <h2 className="mb-1 text-xl font-semibold">Walk-forward backtest{btSeasons.length ? ` (${seasonRange(btSeasons[0], btSeasons[btSeasons.length - 1])})` : ""}</h2>
         <p className="mb-3 text-sm text-muted">Each game predicted from ratings using only earlier games; parameters chosen on earlier seasons only. See Methodology for the baselines.</p>
         <div className="mb-4 grid grid-cols-4 gap-4">
           <Stat label="Win/loss accuracy" value={cal ? pct(cal.accuracy, 1) : "–"} sub={cal ? `${cal.n.toLocaleString()} games` : ""} />
@@ -89,7 +93,7 @@ export default function PredictionsView() {
         </div>
         {bt && (
           <div className="mb-4 grid grid-cols-2 gap-4">
-            <Calibration rel={bt.reliability_last3} title={`Calibration, ${bt.last3_seasons[0]}-${bt.last3_seasons[1]}`} />
+            <Calibration rel={bt.reliability_last3} title={`Calibration, ${seasonRange(bt.last3_seasons[0], bt.last3_seasons[1])}`} />
             <div>
               <Buckets b={bt.buckets_last3} />
               <div className="card mt-4 max-h-64 overflow-auto p-2">

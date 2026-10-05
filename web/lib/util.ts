@@ -2,8 +2,7 @@ export const fmt = (x: number | null | undefined, d = 1) => (x == null || !isFin
 export const pct = (x: number | null | undefined, d = 0) => (x == null ? "–" : (x * 100).toFixed(d) + "%");
 export const signed = (x: number | null | undefined, d = 1) => (x == null ? "–" : (x > 0 ? "+" : "") + x.toFixed(d));
 
-/** Season label for a season-ending year: 2026 -> "2025-26". */
-export const seasonLabel = (y: number) => `${y - 1}-${String(y).slice(2)}`;
+export { seasonLabel, seasonRange } from "./format";
 /** Season (ending year) that a calendar date belongs to. */
 export const seasonOf = (d: string) => {
   const y = +d.slice(0, 4), m = +d.slice(5, 7);

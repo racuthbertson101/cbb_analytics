@@ -9,6 +9,7 @@ import { shortConf } from "./RankingsView";
 import { usePlayers } from "@/lib/players";
 import ShotChart, { Bins } from "./ShotChart";
 import TeamLogo from "./TeamLogo";
+import SeasonChip from "./SeasonChip";
 
 type Stats = { rows: Record<string, Record<string, number>> };
 type RankRows = { rows: { id: string; conf: string; w: number; l: number; cw: number; cl: number; off: number; def: number; margin: number }[] };
@@ -132,7 +133,7 @@ export default function TeamView({ id }: { id: string }) {
       <div className="mb-6 flex items-center gap-5">
         <TeamLogo team={team} size={84} />
         <div className="flex-1">
-          <h1 className="text-4xl font-semibold" style={{ textShadow: team?.color ? `0 0 40px #${team.color}55` : undefined }}>{team?.name ?? "Team"}</h1>
+          <h1 className="text-4xl font-semibold" style={{ textShadow: team?.color ? `0 0 40px #${team.color}55` : undefined }}>{team?.name ?? "Team"}<SeasonChip season={season} note={upcoming ? "preseason" : undefined} /></h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-muted">
             <span className="chip">{shortConf(confName) || "–"}</span>
             {!upcoming && <span className="num">{rec.w}-{rec.l} ({rec.cw}-{rec.cl} conf)</span>}
