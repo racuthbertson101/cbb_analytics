@@ -88,11 +88,41 @@ def _split(v: str):
     return float(a), float(b)
 
 
+class SchemaError(ValueError):
+    """ESPN changed the summary JSON: a key the warehouse depends on is missing (AUDIT R-4)."""
+
+
+# Keys every completed game's summary has carried (all cached 2026 summaries checked). Missing = schema drift, not a quiet NaN.
+REQUIRED_TEAM_STATS = ["fieldGoalsMade-fieldGoalsAttempted", "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+                       "freeThrowsMade-freeThrowsAttempted", "offensiveRebounds", "defensiveRebounds", "totalRebounds", "assists",
+                       "steals", "blocks", "turnovers", "fouls"]
+REQUIRED_PLAYER_KEYS = ["minutes", "points", "fieldGoalsMade-fieldGoalsAttempted", "offensiveRebounds", "defensiveRebounds",
+                        "assists", "turnovers"]
+
+
+def check_summary(d: dict, game_id: str) -> None:
+    """Raise SchemaError when a summary with a box score lacks a required key."""
+    box = (d or {}).get("boxscore") or {}
+    missing = set()
+    for t in box.get("teams", []):
+        names = {x.get("name") for x in t.get("statistics", [])}
+        missing |= {k for k in REQUIRED_TEAM_STATS if k not in names}
+    for p in box.get("players", []):
+        for grp in p.get("statistics", []):
+            if grp.get("athletes"):
+                missing |= {k for k in REQUIRED_PLAYER_KEYS if k not in grp.get("keys", [])}
+    if box and len(box.get("teams", [])) != 2:
+        missing.add("boxscore.teams (expected 2)")
+    if missing:
+        raise SchemaError(f"game {game_id}: ESPN summary missing {sorted(missing)}")
+
+
 def parse_summary(d: dict, game_id: str, game_row: dict):
-    """Returns (team_rows, player_rows) in warehouse column conventions."""
+    """Returns (team_rows, player_rows) in warehouse column conventions. Raises SchemaError on schema drift."""
     trows, prows = [], []
     if not d or "boxscore" not in d:
         return trows, prows
+    check_summary(d, game_id)
     teams = {}
     for t in d["boxscore"].get("teams", []):
         s = {x["name"]: x["displayValue"] for x in t["statistics"]}
@@ -163,12 +193,18 @@ def ingest_days(season: int, days: list[date], force_recent: bool = True, worker
     done = B[B.completed]
     with ThreadPoolExecutor(workers) as ex:
         sums = list(ex.map(lambda gid: summary(gid, force=False), done.game_id))
-    trows, prows = [], []
+    trows, prows, drift = [], [], []
     gmap = B.set_index("game_id").to_dict("index")
     for gid, s in zip(done.game_id, sums):
-        t, p = parse_summary(s, gid, gmap[gid])
+        try:
+            t, p = parse_summary(s, gid, gmap[gid])
+        except SchemaError as e:
+            drift.append(str(e))
+            continue
         trows += t
         prows += p
+    if drift:  # fail the night loudly: a renamed ESPN field must not become silent NaNs in the ratings
+        raise SchemaError(f"{len(drift)} of {len(done)} completed games: {drift[:3]}")
     return merge_into_warehouse(season, B, pd.DataFrame(trows), pd.DataFrame(prows))
 
 

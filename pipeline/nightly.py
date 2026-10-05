@@ -155,11 +155,18 @@ def main(argv=None):
         out.to_parquet(table_path("player_impacts", season), index=False)
 
         # 3. validate
-        bad = validate(season)
+        bad = validate(season, live=True)
         status["validation"] = bad
         if bad:
             raise SystemExit(f"validation failed: {bad}")
         log("validation ok")
+        if today.weekday() == 0 and not a.no_ingest:  # weekly canary vs the independent hoopR parse (AUDIT R-4)
+            from pipeline.warehouse import canary
+
+            status["canary"] = {k: v for k, v in canary.run(season, today).items() if k != "bad"}
+            log(f"canary {status['canary']}")
+            if status["canary"].get("verdict"):
+                raise SystemExit(f"canary failed: {status['canary']['verdict']}")
 
         # 4. refit ratings for the live season (production params) and refresh dependent artifacts
         G = load_games()
