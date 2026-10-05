@@ -115,3 +115,36 @@ def test_team_ids_stable_across_seasons():
     a, b = load("team_seasons", 2025), load("team_seasons", 2026)
     common = set(a[a.is_d1].team_id) & set(b[b.is_d1].team_id)
     assert len(common) > 320
+
+
+@pytest.mark.parametrize("y", SEASONS)
+def test_no_duplicate_games_by_content(y):
+    """The same completed game must not appear under two ESPN ids (AUDIT D-2)."""
+    g = load("games", y)
+    c = g[g.completed]
+    lo, hi = c[["home_id", "away_id"]].min(axis=1), c[["home_id", "away_id"]].max(axis=1)
+    s_lo = c.home_score.where(c.home_id == lo, c.away_score)
+    s_hi = c.away_score.where(c.home_id == lo, c.home_score)
+    assert not pd.DataFrame({"d": c.game_date, "a": lo, "b": hi, "x": s_lo, "y": s_hi}).duplicated().any()
+
+
+@pytest.mark.parametrize("y", [y for y in SEASONS if y != 2020])
+def test_ncaa_tournament_games(y):
+    """63-68 bracket games per season, all neutral; nothing else typed ncaa (AUDIT D-3)."""
+    g = load("games", y)
+    n = g[g.game_type == "ncaa"]
+    assert 63 <= len(n) <= 68, f"{y}: {len(n)} NCAA games"
+    assert n.neutral_site.all()
+    assert not n.notes.fillna("").str.contains(r"\bNIT\b|\bCBI\b|\bCIT\b|Classic|Invitational", case=False).any()
+
+
+def test_game_type_classifier_edge_cases():
+    from pipeline.warehouse.build import classify_game_type
+
+    s = pd.DataFrame({
+        "notes_headline": ["MEN'S BASKETBALL CHAMPIONSHIP - WEST REGION - 1ST ROUND AT KANSAS CITY MO",
+                           "The Basketball Classic - Championship", "CIT - SEMIFINAL", "NIT - CHAMPIONSHIP",
+                           "COLLEGE BASKETBALL INVITATIONAL - CHAMPIONSHIP SERIES"],
+        "season_type": 3, "type_abbreviation": "STD", "home_conference_id": 1.0, "away_conference_id": 2.0,
+        "neutral_site": True, "game_date": "2010-03-20", "tournament_id": [22.0, 42.0, None, 21.0, 11.0]})
+    assert classify_game_type(s).tolist() == ["ncaa", "other_post", "other_post", "nit", "other_post"]

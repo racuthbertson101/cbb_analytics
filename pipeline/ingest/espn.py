@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from pipeline.warehouse.build import BOX, TEAM_STAT_RENAME, classify_game_type
+from pipeline.warehouse.build import BOX, TEAM_STAT_RENAME, classify_game_type, force_neutral
 from pipeline.warehouse.paths import ROOT, table_path
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball"
@@ -198,8 +198,9 @@ def merge_into_warehouse(season: int, B: pd.DataFrame, T: pd.DataFrame, P: pd.Da
         "home_rank": B.home_rank.values, "away_rank": B.away_rank.values, "venue": B.venue.values, "attendance": B.attendance.values})
     cls = pd.DataFrame({"notes_headline": B.notes_headline.values, "season_type": B.season_type.values, "type_abbreviation": B.type_abbreviation.values,
                         "home_conference_id": new.home_conf_id.values, "away_conference_id": new.away_conf_id.values, "neutral_site": B.neutral_site.values,
-                        "game_date": B.game_date.values}, index=new.index)
+                        "game_date": B.game_date.values, "tournament_id": new.tournament_id.values}, index=new.index)
     new["game_type"] = classify_game_type(cls).values
+    new["neutral_site"] = force_neutral(new.game_type, new.notes, new.neutral_site)
     new["home_seed"] = np.nan
     new["away_seed"] = np.nan
     new["has_team_box"] = new.game_id.isin(T.game_id.unique() if len(T) else [])

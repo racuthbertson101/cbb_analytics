@@ -1,6 +1,6 @@
-﻿# Known issues
+# Known issues
 
-- Source gap: NCAA tournament game counts are short in 2009 (58), 2010 (55), 2013 (55), 2017 (65) versus 67 expected; missing games are absent in the ESPN/hoopR schedule. Ratings use what exists.
+- Source gap: NCAA tournament game counts are 64 in 2008-2010 (65 played, the opening-round game is missing) and 65 in 2017 (67 played). CORRECTED 2026-10-05: the earlier 58/55/55 counts for 2009/2010/2013 were a classifier bug (the CIT exclusion matched "Kansas City"), not a source gap.
 - Game type heuristic: conference tournament games without headline on non-neutral sites are labeled `regular` (definition documented in build.py).
 - Player impact v1 (box-score): scale is inflated for extreme rebounders/shot-blockers (ecological regression on team averages) and defense R2 is ~0.45; top of the leaderboard skews to rim-protecting bigs. Kept as labeled v1; RAPM (Phase 9) is the intended upgrade.
 - Position/height/class only from rosters for 2025+ (`ht`, `cls` null earlier).

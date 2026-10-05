@@ -22,6 +22,33 @@ D1_MIN_GAMES = 10  # DEFINITION: D-I test for the first warehouse season only (n
 CONF_HEADLINE = re.compile(r"tournament|championship", re.I)
 MTE_HEADLINE = re.compile(r"classic|challenge|invitational|showcase|tip-off|shootout|festival|series|battle", re.I)
 
+# NCAA tournament: ESPN tournament id 22 (every 2008-2026 bracket game carries it) or the bracket headline when the id is
+# missing. Other events are excluded by name with word boundaries ("CIT" must not match "Kansas City").
+NCAA_TOURNAMENT_ID = 22
+NCAA_HEADLINE = re.compile(r"^\s*(?:NCAA )?Men'?s Basketball Champ", re.I)
+OTHER_POST_HEADLINE = re.compile(r"\b(?:NIT|CBI|CIT|Crown|Vegas 16)\b|Invitational|Classic", re.I)
+NIT_FINAL_WEEK = re.compile(r"semifinal|championship", re.I)
+
+
+def force_neutral(game_type: pd.Series, notes: pd.Series, neutral: pd.Series) -> pd.Series:
+    """DEFINITION: every NCAA tournament game and the NIT semifinals/final are neutral-site, whatever the feed says."""
+    nit_final = game_type.eq("nit") & notes.fillna("").str.contains(NIT_FINAL_WEEK)
+    return neutral.astype(bool) | game_type.eq("ncaa") | nit_final
+
+
+def dedupe_games(games: pd.DataFrame) -> pd.DataFrame:
+    """Drop the same completed game stored under two ESPN ids (same date, team pair and score); keep the 400-series id."""
+    lo = np.minimum(games.home_id, games.away_id)
+    hi = np.maximum(games.home_id, games.away_id)
+    sc_lo = np.where(games.home_id == lo, games.home_score, games.away_score)
+    sc_hi = np.where(games.home_id == lo, games.away_score, games.home_score)
+    key = pd.DataFrame({"d": games.game_date.values, "a": lo, "b": hi, "sa": sc_lo, "sb": sc_hi}, index=games.index)
+    pref = (~games.game_id.str.startswith("4")).astype(int)  # 0 sorts first: the 400-series id wins
+    order = games.assign(_pref=pref).sort_values(["_pref", "game_id"]).index
+    dup = key.loc[order].duplicated() & games.loc[order, "completed"]
+    return games.drop(dup[dup].index)
+
+
 TEAM_STAT_RENAME = {
     "team_score": "points", "opponent_team_score": "opp_points",
     "field_goals_made": "fgm", "field_goals_attempted": "fga",
@@ -60,9 +87,8 @@ def classify_game_type(s: pd.DataFrame) -> pd.Series:
     p = s.season_type == 3
     out[p] = "other_post"
     out[p & h.str.contains(r"\bNIT\b", case=False)] = "nit"
-    out[p & h.str.contains(r"championship|region|final four|first four", case=False)
-        & ~h.str.contains(r"NIT|CBI|CIT|Crown", case=False)] = "ncaa"
-    out[p & h.str.contains(r"Crown|CBI|CIT", case=False)] = "other_post"
+    tid = pd.to_numeric(s.tournament_id, errors="coerce") if "tournament_id" in s else pd.Series(np.nan, index=s.index)
+    out[p & ((tid == NCAA_TOURNAMENT_ID) | h.str.contains(NCAA_HEADLINE)) & ~h.str.contains(OTHER_POST_HEADLINE)] = "ncaa"
     out[s.type_abbreviation.eq("EXH")] = "exhibition"
     return out
 
@@ -145,11 +171,13 @@ def build_season(y: int, d1_prev: set | None = None):
         "venue": s.venue_full_name, "attendance": s.attendance,
     })
     games["game_type"] = classify_game_type(s.assign(game_date=games.game_date)).values
+    games["neutral_site"] = force_neutral(games.game_type, games.notes, games.neutral_site)
     games["home_seed"] = np.nan  # seed fields reserved for the tournament module
     games["away_seed"] = np.nan
     games["has_team_box"] = s.team_box.fillna(False).astype(bool).values
     games["has_player_box"] = s.player_box.fillna(False).astype(bool).values
     games["has_pbp"] = s.PBP.fillna(False).astype(bool).values
+    games = dedupe_games(games)
 
     # teams (latest naming, logos, colors)
     teams = []
