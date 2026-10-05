@@ -26,7 +26,8 @@ def slug(name):
 
 
 def load_cfg(conf_name: str) -> dict:
-    p = CFG_DIR / f"{slug(conf_name)}.yaml"
+    aliases = yaml.safe_load((ROOT / "config" / "membership_overrides.yaml").read_text(encoding="utf8")).get("conference_aliases") or {}
+    p = CFG_DIR / f"{slug(aliases.get(conf_name, conf_name))}.yaml"
     return yaml.safe_load((p if p.exists() else CFG_DIR / "_fallback.yaml").read_text(encoding="utf8"))
 
 

@@ -1,0 +1,16 @@
+# D-I membership corrections for seasons that have no standings file yet (the upcoming season).
+# Read by pipeline/warehouse/build.py::upcoming_membership, applied after ESPN's membership list
+# (pipeline/ingest/membership.py) or, when that is unavailable, after last season's D-I set.
+# Keys are ESPN team ids; conference ids are ESPN group ids.
+seasons:
+  2027:
+    add:
+      "2697": 46     # West Florida: reclassifying to D-I in the ASUN (ESPN groups/46 lists it for 2026-27)
+    remove:
+      - "2598"       # Saint Francis (PA): left D-I after 2025-26 (absent from ESPN's 2026-27 NEC list)
+
+# Conference renames: current ESPN name -> name of the config/tiebreakers/*.yaml file to use.
+# The old league's rules stay in force until an official source for the new name is found.
+conference_aliases:
+  United Athletic Conference: Western Athletic Conference
+  Metro Conference: Metro Atlantic Athletic Conference

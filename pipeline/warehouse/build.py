@@ -11,9 +11,13 @@ import sys
 import numpy as np
 import pandas as pd
 
-from .paths import FIRST_SEASON, RAW, table_path
+import yaml
 
-D1_MIN_GAMES = 10  # DEFINITION: fallback D-I test when standings are missing for a season
+from .paths import FIRST_SEASON, RAW, ROOT, table_path
+
+ESPN_RAW = ROOT / "data" / "raw" / "espn"
+
+D1_MIN_GAMES = 10  # DEFINITION: D-I test for the first warehouse season only (no standings, nothing to carry forward)
 
 CONF_HEADLINE = re.compile(r"tournament|championship", re.I)
 MTE_HEADLINE = re.compile(r"classic|challenge|invitational|showcase|tip-off|shootout|festival|series|battle", re.I)
@@ -63,6 +67,57 @@ def classify_game_type(s: pd.DataFrame) -> pd.Series:
     return out
 
 
+def _conf_names() -> dict:
+    """conf_id -> latest name, from every standings file on disk."""
+    names = {}
+    for p in sorted((RAW / "standings").glob("standings_*.parquet")):
+        st = pd.read_parquet(p, columns=["group_id", "group_name"]).drop_duplicates()
+        names.update(dict(zip(pd.to_numeric(st.group_id, errors="coerce"), st.group_name)))
+    return names
+
+
+def load_overrides() -> dict:
+    p = ROOT / "config" / "membership_overrides.yaml"
+    return (yaml.safe_load(p.read_text(encoding="utf8")) or {}) if p.exists() else {}
+
+
+def upcoming_membership(y: int, d1_prev: set | None, sched_conf: pd.Series) -> pd.DataFrame | None:
+    """D-I members and conferences for a season with no standings file yet (the upcoming season).
+
+    1. ESPN's current membership (pipeline.ingest.membership) when it has been fetched.
+    2. Otherwise last season's D-I set, each team's conference taken from this season's schedule when it has
+       conference games, else last season's conference.
+    Then config/membership_overrides.yaml (new programs, departures, moves) is applied on top.
+    Never uses the n_games threshold: an incomplete schedule undercounts teams (AUDIT D-1).
+    """
+    mp = ESPN_RAW / "membership" / f"membership_{y}.parquet"
+    if mp.exists():
+        m = pd.read_parquet(mp)[["team_id", "conf_id", "conference"]]
+    else:
+        prev = table_path("team_seasons", y - 1)
+        if d1_prev is None and not prev.exists():
+            return None
+        p = pd.read_parquet(prev) if prev.exists() else pd.DataFrame({"team_id": sorted(d1_prev), "conf_id": np.nan, "is_d1": True})
+        if d1_prev is not None:
+            p = p[p.team_id.isin(d1_prev)]
+        m = p[p.is_d1][["team_id", "conf_id"]].copy()
+        m["conf_id"] = m.team_id.map(sched_conf).fillna(pd.to_numeric(m.conf_id, errors="coerce"))
+        m["conference"] = m.conf_id.map(_conf_names())
+    ov = (load_overrides().get("seasons") or {}).get(y) or {}
+    m = m[~m.team_id.isin([str(t) for t in ov.get("remove") or []])]
+    add = pd.DataFrame([{"team_id": str(t), "conf_id": float(c)} for t, c in (ov.get("add") or {}).items()],
+                       columns=["team_id", "conf_id"])
+    if len(add):
+        names = dict(zip(m.conf_id, m.conference)) | {k: v for k, v in _conf_names().items() if k not in set(m.conf_id)}
+        add["conference"] = add.conf_id.map(names)
+        m = pd.concat([m[~m.team_id.isin(add.team_id)], add])
+    m = m.assign(team_id=m.team_id.astype(str), conf_id=pd.to_numeric(m.conf_id, errors="coerce"))
+    missing = m[m.conference.isna()]
+    if len(missing):
+        raise ValueError(f"season {y}: no conference name for D-I teams {missing.team_id.tolist()}; add them to config/membership_overrides.yaml")
+    return m.drop_duplicates("team_id")
+
+
 def build_season(y: int, d1_prev: set | None = None):
     s = _rd("schedules", f"mbb_schedule_{y}.parquet")
     s = s.drop_duplicates("game_id", keep="last").copy()
@@ -107,13 +162,14 @@ def build_season(y: int, d1_prev: set | None = None):
     teams["team_id"] = teams.team_id.astype(str)
     teams["season"] = y
 
-    # conference by season from standings; D-I set
+    # conference by season: standings when published, else ESPN's current membership, else last season's D-I set
     st = _rd("standings", f"standings_{y}.parquet")
     conf = None
     if st is not None:
         conf = st[["group_id", "group_name", "team_id"]]
         conf = conf[~conf.group_name.str.contains("Crown", na=False)].drop_duplicates("team_id").copy()  # drop the Crown pseudo-group BEFORE deduping
         conf["team_id"] = conf.team_id.astype(str)
+        conf = conf.rename(columns={"group_id": "conf_id", "group_name": "conference"})
     sc = pd.concat([
         pd.DataFrame({"team_id": games.home_id, "conf_id": games.home_conf_id}),
         pd.DataFrame({"team_id": games.away_id, "conf_id": games.away_conf_id})])
@@ -121,13 +177,19 @@ def build_season(y: int, d1_prev: set | None = None):
     mode_conf = sc.dropna(subset=["conf_id"]).groupby("team_id").conf_id.agg(lambda x: x.mode().iloc[0]).rename("sched_conf_id")
     ts = pd.concat([ng, mode_conf], axis=1).reset_index().rename(columns={"index": "team_id"})
     ts["season"] = y
+    if conf is None:
+        conf = upcoming_membership(y, d1_prev, mode_conf)
+        if conf is not None:  # teams with no scheduled game yet are still members
+            ts = ts.merge(conf[["team_id"]], on="team_id", how="outer")
+            ts["n_games"] = ts.n_games.fillna(0).astype(int)
+            ts["season"] = y
     if conf is not None:
-        ts = ts.merge(conf.rename(columns={"group_id": "conf_id", "group_name": "conference"}), on="team_id", how="left")
+        ts = ts.merge(conf[["team_id", "conf_id", "conference"]], on="team_id", how="left")
         ts["is_d1"] = ts.conference.notna()
-    else:
+    else:  # first warehouse season only: no standings and nothing earlier to carry forward
         ts["conf_id"] = np.nan
         ts["conference"] = None
-        ts["is_d1"] = ts.team_id.isin(d1_prev) if d1_prev is not None else ts.n_games >= D1_MIN_GAMES
+        ts["is_d1"] = ts.n_games >= D1_MIN_GAMES
     ts["conf_id"] = pd.to_numeric(ts.conf_id, errors="coerce").fillna(ts.sched_conf_id)
     d1 = set(ts.team_id[ts.is_d1])
     games["home_d1"] = games.home_id.isin(d1)
@@ -206,9 +268,9 @@ def write(table: str, season: int, df: pd.DataFrame) -> int:
     return len(df)
 
 
-def build(seasons=None):
+def build(seasons=None, d1_prev: set | None = None):
     seasons = seasons or range(FIRST_SEASON, 2028)
-    d1_prev, counts = None, {}
+    counts = {}
     for y in seasons:
         if not (RAW / "schedules" / f"mbb_schedule_{y}.parquet").exists():
             continue

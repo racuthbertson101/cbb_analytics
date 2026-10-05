@@ -88,6 +88,10 @@ def main(argv=None):
         log(f"offseason: refreshing schedule and rosters for {season}")
         for kind in ("schedules", "rosters", "standings"):
             download.fetch(kind, season, force=True)
+        from pipeline.ingest import membership
+
+        if membership.fetch(season, force=True) is None:
+            log(f"ESPN membership for {season} unavailable: carrying last season's D-I set forward")
         wbuild.build([season])
     # 1. ingest completed games (recheck the last few days) and the schedule for the next 7 days
     if live and not a.no_ingest:

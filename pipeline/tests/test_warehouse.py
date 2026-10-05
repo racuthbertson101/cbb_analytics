@@ -5,6 +5,7 @@ import pytest
 from pipeline.warehouse.paths import FIRST_SEASON, WH, table_path
 
 SEASONS = [y for y in range(FIRST_SEASON, 2027) if table_path("games", y).exists()]
+ALL_SEASONS = [y for y in range(FIRST_SEASON, 2031) if table_path("team_seasons", y).exists()]  # incl. the upcoming season
 pytestmark = pytest.mark.skipif(not SEASONS, reason="warehouse not built")
 
 
@@ -50,10 +51,37 @@ def test_possessions_plausible(y):
     assert (poss.between(35, 120)).mean() > 0.99
 
 
-@pytest.mark.parametrize("y", SEASONS)
+@pytest.mark.parametrize("y", ALL_SEASONS)
 def test_d1_team_count(y):
     ts = load("team_seasons", y)
     assert 335 <= ts.is_d1.sum() <= 370
+    if y >= 2026:
+        assert 355 <= ts.is_d1.sum() <= 370
+
+
+@pytest.mark.parametrize("y", ALL_SEASONS)
+def test_d1_teams_have_conference(y):
+    ts = load("team_seasons", y)
+    d1 = ts[ts.is_d1]
+    assert d1.conference.notna().all() and d1.conf_id.notna().all()
+    if y >= 2026:  # earlier standings split some leagues into divisions ("SEC - West")
+        assert 30 <= d1.conference.nunique() <= 33
+
+
+def test_upcoming_membership_fallback_without_espn(tmp_path, monkeypatch):
+    """With no ESPN membership file: last season's D-I set, schedule conferences, then the overrides file."""
+    from pipeline.warehouse import build
+
+    if not table_path("team_seasons", 2026).exists() or not table_path("games", 2027).exists():
+        pytest.skip("warehouse not built")
+    monkeypatch.setattr(build, "ESPN_RAW", tmp_path)
+    g = load("games", 2027)
+    sc = pd.concat([pd.DataFrame({"team_id": g.home_id, "c": g.home_conf_id}), pd.DataFrame({"team_id": g.away_id, "c": g.away_conf_id})])
+    sched = sc.dropna().groupby("team_id").c.agg(lambda x: x.mode().iloc[0])
+    m = build.upcoming_membership(2027, None, sched).set_index("team_id")
+    assert 355 <= len(m) <= 370 and m.conference.notna().all()
+    assert "2697" in m.index and "2598" not in m.index  # West Florida in, Saint Francis (PA) out
+    assert m.loc["2250", "conference"] == "Pac-12 Conference"  # Gonzaga's move, read from the 2027 schedule
 
 
 @pytest.mark.parametrize("y", SEASONS)

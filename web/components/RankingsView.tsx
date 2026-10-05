@@ -16,7 +16,7 @@ export const shortConf = (c?: string) =>
     .replace("Metro Atlantic Athletic", "MAAC").replace("Mid-American", "MAC").replace("Mid-Eastern Athletic", "MEAC")
     .replace("Southwestern Athletic", "SWAC").replace("Coastal Athletic Association", "CAA").replace("Missouri Valley", "MVC")
     .replace("Mountain West", "MWC").replace("Atlantic Sun", "ASUN").replace("Conference USA", "C-USA")
-    .replace("Western Athletic", "WAC").replace("West Coast", "WCC");
+    .replace("Western Athletic", "WAC").replace("United Athletic", "UAC").replace("West Coast", "WCC");
 
 type Sys = { dates: string[]; teams: string[]; poss: number } & Record<string, (number | null)[][] | string[] | number>;
 type R = Row & { conf: string; team: string; heat: Record<string, number | null>; rating: number | null; mrank: number | null; wab: number | null; sor: number | null; ncsos: number | null; q: (number | null)[] };
