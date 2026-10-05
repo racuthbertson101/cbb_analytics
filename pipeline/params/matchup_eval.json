@@ -1,0 +1,27 @@
+{
+ "status": "pre-registered",
+ "registered": "2026-10-05",
+ "question": "Do team-level style matchups predict the result beyond the adjusted-efficiency margin?",
+ "target": "walk-forward residual: actual home margin minus the walk-forward predicted home margin (data/backtest/oos_preds.parquet)",
+ "test_seasons": [2012, 2026],
+ "features": {
+  "tempo_clash": "home season-to-date pace minus away season-to-date pace (possessions per 40), centered on the league",
+  "three_point": "z(home 3PA rate) * z(away 3PA rate allowed) - z(away 3PA rate) * z(home 3PA rate allowed)",
+  "offensive_rebounding": "z(home ORB%) * z(away ORB% allowed) - z(away ORB%) * z(home ORB% allowed)",
+  "turnovers": "z(home TOV%) * z(away forced TOV%) - z(away TOV%) * z(home forced TOV%)",
+  "free_throws": "z(home FT rate) * z(away FT rate allowed) - z(away FT rate) * z(home FT rate allowed)",
+  "rest": "home days since last game minus away days since last game, each capped at 7"
+ },
+ "inputs": "every team stat is season-to-date from games on EARLIER dates only; z-scores use the league distribution on that date; teams with fewer than 3 earlier D-I games get 0 (league average)",
+ "method": "ridge regression of the residual on the features, fit on seasons before S only (penalty chosen by leave-one-out CV inside the training seasons); candidate margin = predicted margin + fitted adjustment; win probability for both baseline and candidate through the same production spread and calibration mapping",
+ "evaluation": "log loss of the home-win probability per test season, baseline vs candidate; each feature alone and all six jointly",
+ "adoption_rule": {
+  "pooled_log_loss_improvement_at_least": 0.0005,
+  "seasons_improved_at_least": 10,
+  "of_seasons": 15,
+  "both_required": true,
+  "otherwise": "context only: shown on Compare with a grey ContextTag, never in the prediction"
+ },
+ "results": null,
+ "decision": null
+}
