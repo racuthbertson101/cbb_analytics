@@ -106,7 +106,11 @@ def main(argv=None):
 
     # offseason (no results yet for `season`): current = last completed season, upcoming = `season`; only schedule/rosters refresh
     live = completed_count() > 0 or in_full_window(today) and today >= date(season - 1, 11, 1)
-    cur = season if live else season - 1
+    # the site's current season is the live one once results are expected (games scheduled before today); until then
+    # (opening morning) the site keeps the preseason view while the night still predicts and logs (Phase 2 rehearsal finding)
+    sched = pd.read_parquet(gp, columns=["game_date", "game_type"]) if gp.exists() else pd.DataFrame(columns=["game_date", "game_type"])
+    results_expected = live and bool(((sched.game_date < pd.Timestamp(today)) & (sched.game_type != "exhibition")).any())
+    cur = season if results_expected else season - 1
     os.environ["CBB_CURRENT_SEASON"] = str(cur)  # must be set before importing modules that read it
 
     from pipeline.export import accuracy, conferences, contract, players, systems
@@ -142,6 +146,12 @@ def main(argv=None):
         log(f"ingest result {status['ingest']}")
 
     if live:
+        started = completed_count() > 0
+        if results_expected and not started:
+            raise SystemExit(f"{season} games were scheduled before {today} but no results were ingested")
+        if not started:
+            log(f"no completed {season} games yet: preseason ratings; player tables, validation and résumé wait for the first results")
+    if live and started:
         # 2. player tables for the live season (fixed impact model)
         from pipeline.players import seasons as pseasons
         from pipeline.players.impact import ImpactModel, load_ps
@@ -168,11 +178,13 @@ def main(argv=None):
             if status["canary"].get("verdict"):
                 raise SystemExit(f"canary failed: {status['canary']['verdict']}")
 
+    if live:
         # 4. refit ratings for the live season (production params) and refresh dependent artifacts
         G = load_games()
-        log(f"refit {season}: {livefit.patch_artifacts(season, G)}")
-        livefit.refresh_bt(season, G)
-        livefit.refresh_resume(season)
+        log(f"refit {season}: {livefit.patch_artifacts(season, G, today)}")
+        if started:
+            livefit.refresh_bt(season, G)
+            livefit.refresh_resume(season)
 
         # 5. predictions for the next 7 days -> append-only log
         from pipeline.export.contract import _predict_table
@@ -219,7 +231,7 @@ def main(argv=None):
 
     if not (contract.OUT / "shots" / str(cur) / "league.json").exists() or (live and today.weekday() == 0):
         shots.export_shots(cur, force=live)
-    upcoming = season if not live else None
+    upcoming = season if cur != season else None
     contract.export_all(current=cur, upcoming=upcoming)
     players.export_players()
     conferences.tiebreak_index()

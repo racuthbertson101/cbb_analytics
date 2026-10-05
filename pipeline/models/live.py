@@ -21,7 +21,11 @@ from .production import load_prod
 EPOCH = pd.Timestamp("1970-01-01")
 
 
-def fit_season(season: int, G: pd.DataFrame | None = None):
+def fit_season(season: int, G: pd.DataFrame | None = None, asof=None):
+    """Pregame predictions and dated rating snapshots for every game date of the season so far.
+
+    With no completed games yet (opening morning) the rating IS the preseason prior: one snapshot dated `asof`, no predictions.
+    """
     prod = load_prod()
     cfg = prod["config"]
     ctx = Context(G=G, last_season=season)
@@ -32,6 +36,16 @@ def fit_season(season: int, G: pd.DataFrame | None = None):
     prior = build_prior(ctx, fin, season, prod["prior_coefs_current"])
     sd = ctx.sd[season]
     rat = []
+    if len(sd.date) == 0:
+        from .production import day_number
+
+        p = base_params(cfg)
+        p.update(prior)
+        day = day_number(pd.Timestamp(asof) if asof is not None else pd.Timestamp.today().normalize())
+        r = adjeff.fit(sd, 0, day, p)
+        t = r.table()
+        t["date"], t["hca"], t["mu"], t["season"] = EPOCH + pd.Timedelta(days=day), r.hca, r.mu, season
+        return pd.DataFrame(columns=["game_id", "season", "date"]), t
 
     def hook(r, D, sd_, lo, hi):
         t = r.table()
@@ -55,8 +69,8 @@ def fit_season(season: int, G: pd.DataFrame | None = None):
     return pr, R
 
 
-def patch_artifacts(season: int, G: pd.DataFrame | None = None):
-    pr, R = fit_season(season, G)
+def patch_artifacts(season: int, G: pd.DataFrame | None = None, asof=None):
+    pr, R = fit_season(season, G, asof)
     P0 = pd.read_parquet(BT / "adjeff_preds.parquet")
     R0 = pd.read_parquet(BT / "adjeff_ratings.parquet")
     P1 = pd.concat([P0[P0.season != season], pr[[c for c in P0.columns if c in pr.columns]]], ignore_index=True)

@@ -101,9 +101,10 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         g = g[g.game_type != "exhibition"].copy()
         comp = g[g.completed]
         last_dates[y] = str(comp.game_date.max().date()) if len(comp) else None
+        rated = y in have_R and len(comp) > 0  # a season with ratings but no results yet (opening morning) exports as preseason
         # predictions
         pred = pd.DataFrame(columns=["game_id", "pm", "pp", "p"])
-        if y in have_R:
+        if rated:
             p = P[P.season == y].copy()
             p["pm"] = p.pred_a - p.pred_b
             p["pp"] = p.pred_poss
@@ -130,7 +131,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         g = g.merge(pred, on="game_id", how="left")
         # watchability (pregame only): ratings as of each date, last-season star impact, title leverage from a standings simulation if present
         star = W.star_table(y)
-        if y in have_R:
+        if rated:
             ctx_w = W.rating_context(y, R)
         else:
             tb_ = r.table().set_index("team_id")
@@ -164,7 +165,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         write(f"games/{y}.json", {"season": y, "games": rows})
 
         # ratings by date
-        if y in have_R:
+        if rated:
             Ry = R[R.season == y]
             dates = sorted(Ry.date.unique())
             teams_y = sorted(Ry.team_id.unique())
