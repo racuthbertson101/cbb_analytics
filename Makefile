@@ -28,6 +28,8 @@ ratings:
 	$(PY) -m pipeline.models.bt
 	$(PY) -m pipeline.models.consensus
 	$(PY) -m pipeline.models.resume
+	$(PY) -m pipeline.pbp.parse
+	$(PY) -m pipeline.models.ingame
 	$(PY) -m pipeline.sims.make_configs
 site:
 	# same export path as the nightly run and deploy.yml, without ingest or logging

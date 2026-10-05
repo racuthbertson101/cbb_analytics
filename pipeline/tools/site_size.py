@@ -5,7 +5,7 @@
 Measures web/public/data (the build copies it into web/out; code and fonts add a few MB). When the total exceeds the limit,
 shard sets are deleted in this order until it fits, and meta.json records what was kept so the site never requests a
 dropped shard:
-  1. per-game shot bins except the latest season          (gamedetail shots, Phase 3b)
+  1. shot shards (incl. per-game bins) except the latest season
   2. win-probability series older than the latest two seasons (gamedetail, Phase 3b)
   3. player logs before 2020
   4. team logs before 2014
@@ -42,8 +42,9 @@ def drop_rules(out: Path):
     """(description, meta key, value, paths to delete). Evaluated lazily so each rule sees the current tree."""
     gd = _season_dirs(out, "gamedetail")
     latest = max((y for y, _ in gd), default=None)
-    yield ("game shot bins except the latest season", "gameshots_first", latest,
-           [f for y, p in gd if y != latest for f in p.glob("*.shots.json")])
+    sh = _season_dirs(out, "shots")
+    latest_shots = max((y for y, _ in sh), default=None)
+    yield ("shot shards except the latest season", "shots_first", latest_shots, [p for y, p in sh if y != latest_shots])
     yield ("win-probability series older than the latest two seasons", "gamedetail_first", (latest or 0) - 1,
            [p for y, p in gd if latest is not None and y < latest - 1])
     yield ("player logs before 2020", "playerlog_first", 2020, [p for y, p in _season_dirs(out, "playerlogs") if y < 2020])

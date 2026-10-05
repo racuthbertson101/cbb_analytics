@@ -2,7 +2,7 @@
 
     python -m pipeline.pbp.parse [2016 2017 ...]
 
-Output data/pbp/scores_<season>.parquet: one row per scoring change per game (plus the opening tip and the final row) with
+Output: warehouse table pbp_scores/<season>.parquet (published with the warehouse; raw play-by-play is not): one row per scoring change per game (plus the opening tip and the final row) with
 game_id, elapsed (seconds since tip; regulation 2400 s, each OT 300 s; quarter-format feeds handled), period, home, away.
 Also prints coverage against the warehouse box scores: share of completed D-I games with play-by-play, and the share whose
 final play-by-play score equals the box score.
@@ -15,9 +15,8 @@ import numpy as np
 import pandas as pd
 
 from pipeline.ingest import download
-from pipeline.warehouse.paths import ROOT, table_path
+from pipeline.warehouse.paths import table_path
 
-OUT = ROOT / "data" / "pbp"
 FIRST, REG, HALF, OT = 2016, 2400, 1200, 300  # DEFINITION: first play-by-play season used; game clock lengths in seconds
 # The game clock as displayed ("MM:SS", or "SS.s" in the last minute in some seasons) is the only clock field that is right in every
 # season: older files compute *_seconds_remaining for four quarters (period 1 runs to 3000 s), which is wrong for men's halves.
@@ -69,8 +68,9 @@ def parse_season(y: int) -> dict:
     if p is None:
         return {"season": y, "pbp": False}
     s = scores_table(pd.read_parquet(p, columns=COLS))
-    OUT.mkdir(parents=True, exist_ok=True)
-    s.to_parquet(OUT / f"scores_{y}.parquet", index=False)
+    out = table_path("pbp_scores", y)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    s.to_parquet(out, index=False)
     g = pd.read_parquet(table_path("games", y))
     g = g[g.completed & g.both_d1 & (g.game_type != "exhibition")]
     fin = s.groupby("game_id").last()

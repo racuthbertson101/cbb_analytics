@@ -2,7 +2,8 @@
 
 Shots (ESPN x/y from the sportsdataverse release, free throws excluded) are converted to hoop-relative feet: lateral in [-25, 25],
 depth = distance from the hoop toward mid-court (baseline side negative), then binned into BIN x BIN ft cells.
-Shard: shots/<season>/<team>.json = {bins:[[bx,by,attempts,makes]...], players:{pid:[...]}} and shots/<season>/league.json.
+Shard: shots/<season>/<team>.json = {bins:[[bx,by,attempts,makes]...], players:{pid:[...]}, games:{game_id:[...]}} and
+shots/<season>/league.json.
 """
 from __future__ import annotations
 
@@ -62,7 +63,8 @@ def export_shots(last_season=CURRENT_SEASON, force: bool = False):
             for pid, gp in g.groupby("pid"):
                 if pid != "<NA>" and len(gp) >= MIN_PLAYER_SHOTS:
                     players[pid] = bins(gp)
-            write(f"shots/{y}/{tid}.json", {"n": int(len(g)), "bins": bins(g), "players": players})
+            games = {str(gid): bins(gg) for gid, gg in g.groupby("game_id")}  # per-game bins for the Game page
+            write(f"shots/{y}/{tid}.json", {"n": int(len(g)), "bins": bins(g), "players": players, "games": games})
         print("shots", y, len(d), flush=True)
 
 

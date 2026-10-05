@@ -152,6 +152,10 @@ def main(argv=None):
         if not started:
             log(f"no completed {season} games yet: preseason ratings; player tables, validation and résumé wait for the first results")
     if live and started:
+        # 1b. score timelines for the live season from the cached ESPN summaries (win-probability charts)
+        from pipeline.pbp import espn_plays
+
+        log(f"score timelines: {espn_plays.update(season)} games")
         # 2. player tables for the live season (fixed impact model)
         from pipeline.players import seasons as pseasons
         from pipeline.players.impact import ImpactModel, load_ps
@@ -237,6 +241,9 @@ def main(argv=None):
     from pipeline.export import games as game_exports
 
     game_exports.export_logs()
+    from pipeline.export import gamedetail
+
+    gamedetail.export_gamedetail()
     conferences.tiebreak_index()
     conferences.conference_stats(list(range(2010, cur + 1)))
     systems.main()

@@ -28,7 +28,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 from pipeline.models.backtest import BT
-from pipeline.pbp.parse import FIRST, OT, OUT as PBP, REG
+from pipeline.pbp.parse import FIRST, OT, REG
 from pipeline.warehouse.paths import PARAMS, table_path
 
 FEATURES = ["x1", "x2", "x3", "x4", "x5", "x6"]
@@ -70,7 +70,7 @@ def features(margin, t, ot, p0) -> np.ndarray:
 
 def states(season: int, pre: pd.DataFrame | None = None) -> pd.DataFrame:
     """Score states of complete games with a walk-forward pregame prediction, with the final result."""
-    s = pd.read_parquet(PBP / f"scores_{season}.parquet")
+    s = pd.read_parquet(table_path("pbp_scores", season))
     g = pd.read_parquet(table_path("games", season))
     g = g[g.completed & g.both_d1 & (g.game_type != "exhibition")][["game_id", "home_score", "away_score"]]
     fin = s.groupby("game_id")[["home", "away"]].last()
@@ -126,7 +126,7 @@ def logloss(p, y):
 
 def walk_forward(last_season: int = 2026, export_seasons=(2025, 2026, 2027)) -> dict:
     pre = pregame()
-    seasons = [y for y in range(FIRST, last_season + 1) if (PBP / f"scores_{y}.parquet").exists()]
+    seasons = [y for y in range(FIRST, last_season + 1) if table_path("pbp_scores", y).exists()]
     data = {y: states(y, pre) for y in seasons}
     by_season, oos = {}, []
     for S in seasons[1:]:
