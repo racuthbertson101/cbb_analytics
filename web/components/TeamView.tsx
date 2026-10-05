@@ -222,13 +222,12 @@ export default function TeamView({ id }: { id: string }) {
       {roster.length > 0 && (
         <div className="card mb-6 overflow-hidden">
           <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Roster and player stats</h2>
-          <div className="p-2"><table className="dense"><thead><tr>{th("Player", true)}{th("Pos", true)}{th("Ht", true)}{th("Cl", true)}{th("GP")}{th("MPG")}{th("PPG")}{th("RPG")}{th("APG")}{th("TS%")}{th("USG")}{th("Impact")}</tr></thead>
+          <div className="p-2"><table className="dense"><thead><tr>{th("Player", true)}{th("Pos", true)}{th("Ht", true)}{th("Cl", true)}{th("GP")}{th("MPG")}{th("PPG")}{th("RPG")}{th("APG")}{th("TS%")}{th("USG")}</tr></thead>
             <tbody>{roster.slice(0, 14).map((r) => (
               <tr key={r.id}><td className="l"><Link className="font-medium hover:text-accent" href={`/player/?id=${r.id}&season=${season}`}>{r.name}</Link></td>
                 <td className="l text-muted">{String(r.pos ?? "")}</td><td className="l text-muted">{String(r.ht ?? "")}</td><td className="l text-muted">{String(r.cls ?? "")}</td>
                 <td>{r.gp}</td><td>{fmt(r.mpg as number, 1)}</td><td>{fmt(r.ppg as number, 1)}</td><td>{fmt(r.rpg as number, 1)}</td><td>{fmt(r.apg as number, 1)}</td>
-                <td>{r.ts == null ? "–" : fmt((r.ts as number) * 100, 1)}</td><td>{fmt(r.usg as number, 1)}</td>
-                <td><span className="block rounded px-1.5" style={{ background: heat(r.pc_imp as number | null) }}>{signed(r.imp as number, 1)}</span></td></tr>))}</tbody></table></div>
+                <td>{r.ts == null ? "–" : fmt((r.ts as number) * 100, 1)}</td><td>{fmt(r.usg as number, 1)}</td></tr>))}</tbody></table></div>
         </div>
       )}
       {SH && SHL && (
@@ -246,7 +245,7 @@ export default function TeamView({ id }: { id: string }) {
                 <td>{h.w}-{h.l}</td><td>{h.cw}-{h.cl}</td><td>{signed(h.margin, 1)}</td><td>{h.rank}</td></tr>))}</tbody></table></div>
         </div>
       )}
-      <p className="text-xs text-faint">Predictions shown are the pregame values from the walk-forward model (no knowledge of the result). Player impact is a fitted box-score rating (see Methodology).</p>
+      <p className="text-xs text-faint">Predictions shown are the pregame values from the walk-forward model (no knowledge of the result). The experimental box-score impact rating appears only on player pages (see Methodology).</p>
     </div>
   );
 }

@@ -9,6 +9,8 @@ import TeamLogo from "./TeamLogo";
 import ShotChart, { Bins } from "./ShotChart";
 import SeasonChip from "./SeasonChip";
 
+const IMP_TIP = "Experimental box-score rating (points per 100 possessions vs an average D-I player). Known bias: it overrates rebounders and shot blockers (centers average about +14, guards about -2), so compare players at the same position only.";
+
 type Logs = { cols: string[]; logs: Record<string, (string | number)[][]> };
 type Career = Record<string, (string | number | null)[][]>;
 
@@ -60,9 +62,9 @@ export default function PlayerView() {
       {p && (
         <>
           <div className="mb-6 grid grid-cols-5 gap-4">
-            {[["PPG", fmt(p.ppg as number, 1)], ["RPG", fmt(p.rpg as number, 1)], ["APG", fmt(p.apg as number, 1)], ["TS%", fmt((p.ts as number) * 100, 1)], ["Impact", signed(p.imp as number, 1)]].map(([l, v], i) => (
+            {[["PPG", fmt(p.ppg as number, 1)], ["RPG", fmt(p.rpg as number, 1)], ["APG", fmt(p.apg as number, 1)], ["TS%", fmt((p.ts as number) * 100, 1)], ["Box impact (experimental)", signed(p.imp as number, 1)]].map(([l, v], i) => (
               <div key={l} className="card p-4" style={i === 4 ? { boxShadow: `inset 0 -3px 0 ${heat(p.pc_imp as number | null)}` } : undefined}>
-                <div className="text-xs uppercase tracking-wider text-muted">{l}</div><div className="num mt-1 text-3xl font-semibold">{v}</div>
+                <div className="text-xs uppercase tracking-wider text-muted" title={i === 4 ? IMP_TIP : undefined}>{l}{i === 4 && <span className="ml-1 cursor-help normal-case">ⓘ</span>}</div><div className="num mt-1 text-3xl font-semibold">{v}</div>
                 {i === 4 && <div className="text-xs text-muted">off {signed(p.imp_o as number, 1)} · def {signed(p.imp_d as number, 1)}</div>}
               </div>))}
           </div>
@@ -83,7 +85,7 @@ export default function PlayerView() {
             </div>
             <div className="card col-span-2 overflow-hidden">
               <h2 className="px-4 pt-4 text-sm font-medium uppercase tracking-wider text-muted">Career</h2>
-              <div className="p-2"><table className="dense"><thead><tr><th className="l">Season</th><th className="l">Team</th><th>GP</th><th>MPG</th><th>PPG</th><th>RPG</th><th>APG</th><th>TS%</th><th>USG</th><th>Impact</th></tr></thead>
+              <div className="p-2"><table className="dense"><thead><tr><th className="l">Season</th><th className="l">Team</th><th>GP</th><th>MPG</th><th>PPG</th><th>RPG</th><th>APG</th><th>TS%</th><th>USG</th><th title={IMP_TIP}>Box impact (exp.)</th></tr></thead>
                 <tbody>{career.map((c) => (
                   <tr key={String(c[0])}><td className="l"><Link className="hover:text-accent" href={`?id=${id}&season=${c[0]}`}>{seasonLabel(c[0] as number)}</Link></td>
                     <td className="l">{map.get(c[1] as string)?.short}</td><td>{c[2]}</td><td>{c[3]}</td><td>{c[4]}</td><td>{c[5]}</td><td>{c[6]}</td>

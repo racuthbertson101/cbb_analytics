@@ -25,7 +25,7 @@ export default function PlayersView() {
   const [minMin, setMinMin] = useState(300);
   const [pos, setPos] = useState("All");
   const [q, setQ] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([{ id: "imp", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "p40", desc: true }]);
 
   const rows = useMemo(() => (data?.rows ?? []).filter((r) => (r.min as number) >= minMin && (pos === "All" || posGroup(r.pos) === pos) && (!q || r.name.toLowerCase().includes(q.toLowerCase()))), [data, minMin, pos, q]);
 
@@ -45,6 +45,7 @@ export default function PlayersView() {
     { id: "gp", header: "GP", accessorFn: (r) => r.gp },
     { id: "mpg", header: "MPG", accessorFn: (r) => r.mpg, cell: stat("mpg", 1) },
     { id: "ppg", header: "PPG", accessorFn: (r) => r.ppg, cell: stat("ppg", 1) },
+    { id: "p40", header: "Pts/40", accessorFn: (r) => (r.mpg ? ((r.ppg as number) / (r.mpg as number)) * 40 : null), cell: ({ getValue }) => <span className="block px-1.5">{fmt(getValue() as number | null, 1)}</span> },
     { id: "rpg", header: "RPG", accessorFn: (r) => r.rpg, cell: stat("rpg", 1) },
     { id: "apg", header: "APG", accessorFn: (r) => r.apg, cell: stat("apg", 1) },
     { id: "usg", header: "USG%", accessorFn: (r) => r.usg, cell: stat("usg", 1, "pc_usg") },
@@ -55,9 +56,6 @@ export default function PlayersView() {
     { id: "drb_pct", header: "DRB%", accessorFn: (r) => r.drb_pct, cell: stat("drb_pct", 1, "pc_drb_pct") },
     { id: "stl_pct", header: "STL%", accessorFn: (r) => r.stl_pct, cell: stat("stl_pct", 1, "pc_stl_pct") },
     { id: "blk_pct", header: "BLK%", accessorFn: (r) => r.blk_pct, cell: stat("blk_pct", 1, "pc_blk_pct") },
-    { id: "imp_o", header: "Off imp", accessorFn: (r) => r.imp_o, cell: stat("imp_o", 1, "pc_imp_o", true) },
-    { id: "imp_d", header: "Def imp", accessorFn: (r) => r.imp_d, cell: stat("imp_d", 1, "pc_imp_d", true) },
-    { id: "imp", header: "Impact", accessorFn: (r) => r.imp, cell: stat("imp", 1, "pc_imp", true) },
   ], [map, season]); // eslint-disable-line react-hooks/exhaustive-deps
   const table = useReactTable({ data: rows, columns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), sortDescFirst: true });
   const shown = table.getRowModel().rows.slice(0, 400);
@@ -67,7 +65,7 @@ export default function PlayersView() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">Players<SeasonChip season={season} /></h1>
-          <p className="mt-1 text-muted">{seasonLabel(season || 2026)} leaderboards. Impact = fitted box-score rating (points per 100 possessions on the floor vs an average D-I player). Heat = percentile among D-I players with {data?.refMin ?? 300}+ minutes.</p>
+          <p className="mt-1 text-muted">{seasonLabel(season || 2026)} leaderboards, sorted by points per 40 minutes. Heat = percentile among D-I players with {data?.refMin ?? 300}+ minutes.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select value={season} onChange={(e) => router.replace(`?season=${e.target.value}`, { scroll: false })}>
@@ -97,7 +95,7 @@ export default function PlayersView() {
           </table>
         </div>
       </div>
-      <p className="mt-3 text-xs text-faint">Showing the top {Math.min(400, table.getRowModel().rows.length)} of {rows.length} matching players. Impact is model-relative: it is fit so that minutes-weighted player values reproduce team ratings, and the scale is likely overstated for extreme rebounders and shot blockers.</p>
+      <p className="mt-3 text-xs text-faint">Showing the top {Math.min(400, table.getRowModel().rows.length)} of {rows.length} matching players. The experimental box-score impact rating is shown only on player pages: it overrates rebounders and shot blockers, so it is not used to rank players here.</p>
     </div>
   );
 }
