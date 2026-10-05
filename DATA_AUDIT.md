@@ -67,3 +67,23 @@ Threshold (logged in DECISIONS.md): >=98% of completed games with both team boxe
 - Phase 4 players: player box (minutes), rosters (2025+), player season stats for cross-checks.
 - Phase 6 conferences: standings/conference ids by season, schedules with future games (2027 schedule exists).
 - Phase 9: shots (2026 only) and the published NCAA RAPM comparison were done; pbp was never downloaded (planned for RAPM in IMPROVEMENT_PLAN.md Phase 5).
+
+## Play-by-play coverage (downloaded 2026-10-05, Phase 3b; local only, never published)
+
+`pipeline/pbp/parse.py` keeps one row per scoring change. Completed D-I vs D-I games, non-exhibition:
+
+| Season | D-I games | With play-by-play | Final pbp score = box score |
+|---|---|---|---|
+| 2015-16 | 5,458 | 91.9% | 96.3% |
+| 2016-17 | 5,510 | 92.5% | 96.7% |
+| 2017-18 | 5,528 | 94.5% | 97.0% |
+| 2018-19 | 5,593 | 91.5% | 97.3% |
+| 2019-20 | 5,324 | 94.3% | 97.4% |
+| 2020-21 | 3,944 | 94.6% | 98.0% |
+| 2021-22 | 5,478 | 97.7% | 98.5% |
+| 2022-23 | 5,714 | 98.5% | 98.3% |
+| 2023-24 | 5,726 | 98.6% | 98.4% |
+| 2024-25 | 5,764 | 98.1% | 99.0% |
+| 2025-26 | 5,752 | 99.8% | 99.9% |
+
+Parsing notes: the displayed game clock is the only clock that is right in every season (older files compute seconds remaining for four quarters). Sequence numbers are not chronological (late corrections are appended), so plays are ordered by game time, then total points. A few feeds record games in four quarters. Most remaining mismatches are feeds that stop early, typically missing the last two points. Those games are left out of the in-game model and get no win-probability chart.
