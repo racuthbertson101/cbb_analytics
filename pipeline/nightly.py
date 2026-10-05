@@ -1,6 +1,6 @@
 """Nightly pipeline: ingest -> validate -> refit live season -> predict next 7 days -> log -> simulate conferences -> export -> build.
 
-    python -m pipeline.nightly [--today YYYY-MM-DD] [--nsim 20000] [--base-path /cbb_analytics] [--no-build] [--force]
+    python -m pipeline.nightly [--today YYYY-MM-DD] [--nsim 20000] [--base-path /cbb_analytics] [--no-build] [--force] [--check]
 
 --today runs the whole path "as if" it were that date (replay mode; use with CBB_WAREHOUSE pointing at a truncated warehouse copy).
 Season window guard: full run November 1 - April 15; otherwise a light weekly run (Mondays) unless --force.
@@ -26,6 +26,10 @@ def in_full_window(d: date) -> bool:
     return (d.month, d.day) >= (11, 1) or (d.month, d.day) <= (4, 15)
 
 
+def should_run(d: date, force: bool = False) -> bool:
+    return force or in_full_window(d) or d.weekday() == 0
+
+
 def log(msg):
     print(f"[nightly {datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
@@ -39,10 +43,18 @@ def main(argv=None):
     ap.add_argument("--no-ingest", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--check", action="store_true", help="only decide whether today is a run day; writes run=true|false to $GITHUB_OUTPUT")
     a = ap.parse_args(argv)
     today = date.fromisoformat(a.today) if a.today else datetime.now(timezone.utc).astimezone().date()
     season = season_of(today)
-    if not in_full_window(today) and today.weekday() != 0 and not a.force:
+    run = should_run(today, a.force)
+    if a.check:
+        log(f"{today}: {'run day' if run else 'not a run day (outside Nov 1 - Apr 15 and not a Monday)'}")
+        if os.environ.get("GITHUB_OUTPUT"):
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                f.write(f"run={'true' if run else 'false'}\n")
+        return 0
+    if not run:
         log(f"{today} is outside the full-run window and not a Monday: nothing to do")
         return 0
     import pandas as pd

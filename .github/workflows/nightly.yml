@@ -29,34 +29,52 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       NEXT_PUBLIC_BASE_PATH: /cbb_analytics
+    outputs:
+      run: ${{ steps.guard.outputs.run }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      # Off days (outside Nov 1 - Apr 15 and not a Monday) end here with a green run; everything below is skipped.
+      - name: Is today a run day?
+        id: guard
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="--force"; fi
+          if [ -n "${{ inputs.today }}" ]; then ARGS="$ARGS --today ${{ inputs.today }}"; fi
+          uv run python -m pipeline.nightly --check $ARGS
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.run == 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install Python and site dependencies
+        if: steps.guard.outputs.run == 'true'
         run: |
           uv sync
           cd web && npm install --no-audit --no-fund
       - name: Download warehouse tables, model artifacts and prediction log
+        if: steps.guard.outputs.run == 'true'
         run: uv run python -m pipeline.release download
       - name: Nightly pipeline (ingest, validate, refit, predict, simulate, export, build)
+        if: steps.guard.outputs.run == 'true'
         run: |
           ARGS="--nsim ${{ inputs.nsim || 20000 }} --base-path /cbb_analytics"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="$ARGS --force"; fi
           if [ -n "${{ inputs.today }}" ]; then ARGS="$ARGS --today ${{ inputs.today }}"; fi
           uv run python -m pipeline.nightly $ARGS
       - uses: actions/configure-pages@v5
+        if: steps.guard.outputs.run == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.guard.outputs.run == 'true'
         with:
           path: web/out
       - name: Upload updated warehouse, artifacts and prediction log
+        if: steps.guard.outputs.run == 'true'
         run: uv run python -m pipeline.release upload
   deploy:
     needs: build          # any failure above leaves the previous deployment untouched
+    if: needs.build.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
