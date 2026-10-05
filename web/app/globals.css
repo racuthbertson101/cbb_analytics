@@ -7,7 +7,7 @@
   --border: #232c3b;
   --text: #e8ecf3;
   --muted: #8b96aa;
-  --faint: #5b667a;
+  --faint: #858b96;
   --accent: #f2b544;
   --accent-2: #4cc9c0;
   --bad: #e5754f;
@@ -54,3 +54,7 @@ table.dense th { position: sticky; top: 0; z-index: 2; background: var(--surface
 table.dense th.l, table.dense td.l { text-align: left; }
 table.dense td { padding: 5px 8px; text-align: right; border-bottom: 1px solid rgba(35,44,59,.6); white-space: nowrap; font-variant-numeric: tabular-nums; }
 table.dense tr:hover td { background: rgba(255,255,255,0.03); }
+/* prose tables (Methodology): text cells wrap instead of pushing the page wider than the viewport */
+table.dense.prose td { white-space: normal; vertical-align: top; }
+table.dense.prose td:not(.l) { white-space: nowrap; }
+table.dense.prose td.l { min-width: 12rem; }

@@ -52,7 +52,7 @@ export default function MethodologyView() {
       <Section title="Adjusted efficiency (the main rating)">
         <p>For each team in each game the response is points per 100 possessions. Predictors are offense dummies for the team, defense dummies for the opponent, and a site term (home +1, neutral 0, away -1), fit by ridge regression toward a preseason prior. Ratings before a game use only games strictly before that date. Adjusted offense = league mean + offense effect; adjusted defense = league mean + defense effect (lower is better); AdjEM = offense minus defense. Tempo is a second ridge model of possessions per game (team effect for each side).</p>
         {prod && (
-          <table className="dense">
+          <table className="dense prose">
             <thead><tr><th className="l">Parameter</th><th>Value</th><th className="l">How it was chosen</th></tr></thead>
             <tbody>
               <tr><td className="l">Ridge strength (efficiency)</td><td>{prod.config.lam}</td><td className="l">walk-forward grid search on prior seasons</td></tr>
@@ -79,7 +79,7 @@ export default function MethodologyView() {
         <p>For every game in {bt ? `${bt.test_seasons[0]}-${bt.test_seasons[1]}` : "…"} the model is refit each game day on earlier games only. Hyperparameters for season S are chosen using seasons before S; the spread model and calibrator for S are fit on predictions from seasons before S. A test in the repository proves that changing the results of a game (or of any game on the same day or later) does not change earlier predictions.</p>
         {bt ? (
           <>
-            <table className="dense">
+            <table className="dense prose">
               <thead><tr><th className="l">System</th><th>MAE</th><th>RMSE</th><th>Log loss</th><th>Brier</th><th>Accuracy</th></tr></thead>
               <tbody>
                 {Object.entries(bt.systems).map(([k, v]) => (
@@ -106,7 +106,7 @@ export default function MethodologyView() {
               </div>
               <div>
                 <h3 className="mb-1 text-sm font-medium text-ink">Accuracy by confidence bucket</h3>
-                <table className="dense">
+                <table className="dense prose">
                   <thead><tr><th className="l">Bucket</th><th>Games</th><th>Mean confidence</th><th>Accuracy</th></tr></thead>
                   <tbody>{bt.buckets.map((b) => <tr key={b.bucket}><td className="l">{b.bucket}</td><td>{b.n.toLocaleString()}</td><td>{(b.mean_conf * 100).toFixed(1)}%</td><td>{(b.accuracy * 100).toFixed(1)}%</td></tr>)}</tbody>
                 </table>
@@ -139,7 +139,7 @@ export default function MethodologyView() {
         <p><b className="text-ink">Résumé metrics.</b> Wins above bubble, strength of record and quadrant records, computed with our adjusted-efficiency rating in place of NET. They are definitions: bubble = rank 45, SOR reference = average of the top 25, quadrant cutoffs = NCAA rank bands by site.</p>
         <p><b className="text-ink">Consensus.</b> Non-negative least squares on held-out margin error over adjusted efficiency, Elo, Bradley-Terry and last season&apos;s rating; team ratings are blended with the (renormalized) learned weights, and a mean-rank column averages the systems&apos; ranks.</p>
         {cs && (<>
-          <table className="dense"><thead><tr><th className="l">System (test seasons {cs.test_seasons[0]}-{cs.test_seasons[1]})</th><th>MAE</th><th>RMSE</th><th>Log loss</th></tr></thead><tbody>
+          <table className="dense prose"><thead><tr><th className="l">System (test seasons {cs.test_seasons[0]}-{cs.test_seasons[1]})</th><th>MAE</th><th>RMSE</th><th>Log loss</th></tr></thead><tbody>
             {[["adjeff", "Adjusted efficiency"], ["elo", "Elo (margin-aware)"], ["bt", "Bradley-Terry (scaled)"], ["prev", "Previous-season rating"], ["cons", "Consensus"]].map(([k, l]) => (
               <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
           </tbody></table>
@@ -154,7 +154,7 @@ export default function MethodologyView() {
       <Section title="Player impact rating (v1, box-score based)">
         <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. Impact is shrunk toward zero for low minutes (weight minutes / (minutes + k)).</p>
         {pl && (<>
-          <table className="dense"><tbody>
+          <table className="dense prose"><tbody>
             <tr><td className="l">Ridge strength (leave-one-season-out CV)</td><td>{pl.alpha}</td></tr>
             <tr><td className="l">Low-minutes shrink k (walk-forward evidence)</td><td>{pl.shrink_k_minutes} minutes</td></tr>
             <tr><td className="l">In-sample team-rating R²: offense / defense</td><td>{pl.within_season_r2_offense.toFixed(2)} / {pl.within_season_r2_defense.toFixed(2)}</td></tr>
