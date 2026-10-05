@@ -15,7 +15,7 @@ import pandas as pd
 from pipeline.warehouse.paths import ROOT
 
 LOG = Path(os.environ["CBB_PREDICTION_LOG"]) if os.environ.get("CBB_PREDICTION_LOG") else ROOT / "data" / "predictions" / "log.parquet"
-FIELDS = ["game_id", "made_at", "game_date", "home_id", "away_id", "neutral", "pm", "ph", "pa", "p", "plo", "phi", "model_version"]
+FIELDS = ["game_id", "made_at", "game_date", "home_id", "away_id", "neutral", "pm", "ph", "pa", "p", "model_version"]
 
 
 def _hash(prev: str, row: dict) -> str:

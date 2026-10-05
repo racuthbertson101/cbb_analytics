@@ -145,8 +145,8 @@ def main(argv=None):
             cal.sig, cal.gx, cal.gy = prod["sigma_coef"], np.array(prod["calibration_grid_x"]), np.array(prod["calibration_grid_y"])
             fp = _predict_table(tbl, prod, cal, up.home_id.values, up.away_id.values, up.neutral_site.values)
             new = pd.DataFrame({"game_id": up.game_id.values, "game_date": up.game_date.astype(str).values, "home_id": up.home_id.values, "away_id": up.away_id.values,
-                                "neutral": up.neutral_site.values, "pm": fp.pm.values, "ph": fp.ph.values, "pa": fp.pa.values, "p": fp.p.values, "plo": fp.lo.values,
-                                "phi": fp.hi.values, "model_version": "adjeff-v1"})
+                                "neutral": up.neutral_site.values, "pm": fp.pm.values, "ph": fp.ph.values, "pa": fp.pa.values, "p": fp.p.values,
+                                "model_version": "adjeff-v1"})
             status["logged"] = plog.append(new, datetime.now(timezone.utc).isoformat())
         else:
             status["logged"] = 0

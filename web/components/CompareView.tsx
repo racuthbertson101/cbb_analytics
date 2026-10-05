@@ -45,7 +45,7 @@ export default function CompareView() {
     const poss = (((tempo[i] as number) + (tempo[j] as number)) / 2);
     const m = ((ea - eb) * poss) / 100;
     const prob = (mm: number) => interp(cdf(mm / Math.max(PP.sigma_coef[0] + PP.sigma_coef[1] * (poss - 68), 3)), PP.cal_x, PP.cal_y);
-    return { missing: false as const, ea, eb, poss, m, sa: (ea * poss) / 100, sb: (eb * poss) / 100, p: prob(m), lo: prob(m + PP.q10), hi: prob(m + PP.q90), mlo: m + PP.q10, mhi: m + PP.q90, off, def, i, j };
+    return { missing: false as const, ea, eb, poss, m, sa: (ea * poss) / 100, sb: (eb * poss) / 100, p: prob(m), mlo: m + PP.q10, mhi: m + PP.q90, off, def, i, j };
   }, [R, PRE, PP, a, b, site]);
 
   const sorted = useMemo(() => [...(teams ?? [])].sort((x, y) => x.name.localeCompare(y.name)), [teams]);
@@ -86,12 +86,11 @@ export default function CompareView() {
           <div className="relative h-4 overflow-hidden rounded-full bg-surface2">
             <div className="absolute inset-y-0 left-0" style={{ width: `${out.p * 100}%`, background: ta?.color ? `#${ta.color}` : "#f2b544", opacity: 0.85 }} />
             <div className="absolute inset-y-0 right-0" style={{ width: `${(1 - out.p) * 100}%`, background: tb?.color ? `#${tb.color}` : "#4cc9c0", opacity: 0.6 }} />
-            <div className="absolute -inset-y-0.5 border-x-2 border-white/80" style={{ left: `${out.lo * 100}%`, right: `${(1 - out.hi) * 100}%`, background: "rgba(255,255,255,.18)" }} />
           </div>
           <div className="mt-2 flex justify-between text-lg"><span className="num text-accent">{pct(out.p, 1)}</span><span className="num text-muted">{pct(1 - out.p, 1)}</span></div>
           <div className="mt-4 grid grid-cols-3 gap-4 text-center text-sm">
             <div className="card p-3"><div className="text-xs text-muted">Margin</div><div className="num text-lg">{ta?.short} {signed(out.m, 1)}</div></div>
-            <div className="card p-3"><div className="text-xs text-muted">80% margin interval</div><div className="num text-lg">{signed(out.mlo, 0)} to {signed(out.mhi, 0)}</div></div>
+            <div className="card p-3"><div className="text-xs text-muted" title="Outcome interval from historical prediction errors: 80% of actual margins land in this range">80% of results land in</div><div className="num text-lg">{ta?.short} {signed(out.mlo, 0)} to {signed(out.mhi, 0)}</div></div>
             <div className="card p-3"><div className="text-xs text-muted">Total</div><div className="num text-lg">{fmt(out.sa + out.sb, 0)}</div></div>
           </div>
           <p className="mt-4 text-xs text-faint">Uses adjusted offense/defense/tempo, the fitted home-court advantage, the tempo-dependent spread and the calibrated win probability from the Methodology page.</p>

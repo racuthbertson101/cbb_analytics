@@ -55,9 +55,7 @@ def _predict_table(tbl: pd.DataFrame, prod: dict, cal, home, away, neutral) -> p
     eb = a.adj_off.values + h.adj_def.values - mu - hca
     poss = (h.adj_tempo.values + a.adj_tempo.values) / 2
     m = (ea - eb) * poss / 100
-    q10, q90 = prod["margin_residual_quantiles"]["0.1"], prod["margin_residual_quantiles"]["0.9"]
-    return pd.DataFrame({"pm": m, "pp": poss, "p": cal._win_prob(m, poss), "lo": cal._win_prob(m + q10, poss), "hi": cal._win_prob(m + q90, poss),
-                         "ph": ea * poss / 100, "pa": eb * poss / 100})
+    return pd.DataFrame({"pm": m, "pp": poss, "p": cal._win_prob(m, poss), "ph": ea * poss / 100, "pa": eb * poss / 100})
 
 
 def export_all(current: int = 2026, upcoming: int | None = 2027):
@@ -104,16 +102,13 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         last_dates[y] = str(comp.game_date.max().date()) if len(comp) else None
         # predictions
         pred = pd.DataFrame(columns=["game_id", "pm", "pp", "p"])
-        q10, q90 = prod["margin_residual_quantiles"]["0.1"], prod["margin_residual_quantiles"]["0.9"]
         if y in have_R:
             p = P[P.season == y].copy()
             p["pm"] = p.pred_a - p.pred_b
             p["pp"] = p.pred_poss
             p["p"] = cal._win_prob(p.pm.values, p.pp.values)
-            p["lo"] = cal._win_prob(p.pm.values + q10, p.pp.values)
-            p["hi"] = cal._win_prob(p.pm.values + q90, p.pp.values)
             p["ph"], p["pa"] = p.pred_a, p.pred_b
-            pred = p[["game_id", "pm", "pp", "p", "lo", "hi", "ph", "pa"]]
+            pred = p[["game_id", "pm", "pp", "p", "ph", "pa"]]
             fut = g[~g.completed]
             Ry_ = R[R.season == y]
             tbl_ = Ry_[Ry_.date == Ry_.date.max()].set_index("team_id")
@@ -131,7 +126,6 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             d = pr.predict_arrays(ia, ib, site)
             pred = pd.DataFrame({"game_id": up.game_id.values, "pm": d.margin.values, "pp": d.poss.values, "p": d.win_prob_a.values,
                                  "ph": d.score_a.values, "pa": d.score_b.values})
-            pred["lo"], pred["hi"] = d.win_prob_lo.values, d.win_prob_hi.values
         g = g.merge(pred, on="game_id", how="left")
         # watchability (pregame only): ratings as of each date, last-season star impact, title leverage from a standings simulation if present
         star = W.star_table(y)
@@ -160,7 +154,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             rows.append({"id": r.game_id, "d": str(r.game_date.date()), "a": r.away_id, "h": r.home_id,
                          "as": r.away_score if r.completed else None, "hs": r.home_score if r.completed else None,
                          "n": bool(r.neutral_site), "t": r.game_type, "cg": bool(r.conference_game),
-                         "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p, "plo": r.lo, "phi": r.hi, "ph": r.ph, "pa": r.pa,
+                         "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p, "ph": r.ph, "pa": r.pa,
                          "ar": None if pd.isna(r.away_rank) or r.away_rank > 25 else int(r.away_rank),
                          "hr": None if pd.isna(r.home_rank) or r.home_rank > 25 else int(r.home_rank),
                          "d1": bool(r.both_d1), "note": r.notes if isinstance(r.notes, str) else None,

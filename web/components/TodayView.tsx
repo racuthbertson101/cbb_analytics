@@ -11,7 +11,7 @@ import TeamLogo from "./TeamLogo";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[] };
 
-function WinBar({ p, lo, hi, a, h }: { p: number; lo: number | null; hi: number | null; a?: Team; h?: Team }) {
+function WinBar({ p, a, h }: { p: number; a?: Team; h?: Team }) {
   const ca = a?.color ? `#${a.color}` : "#5b667a";
   const ch = h?.color ? `#${h.color}` : "#f2b544";
   return (
@@ -19,9 +19,6 @@ function WinBar({ p, lo, hi, a, h }: { p: number; lo: number | null; hi: number 
       <div className="relative h-2.5 overflow-hidden rounded-full bg-surface2">
         <div className="absolute inset-y-0 left-0" style={{ width: `${(1 - p) * 100}%`, background: ca, opacity: 0.85 }} />
         <div className="absolute inset-y-0 right-0" style={{ width: `${p * 100}%`, background: ch, opacity: 0.85 }} />
-        {lo != null && hi != null && (
-          <div className="absolute -inset-y-0.5 border-x-2 border-white/80" style={{ left: `${(1 - hi) * 100}%`, right: `${lo * 100}%`, background: "rgba(255,255,255,0.18)" }} title="80% interval on win probability" />
-        )}
       </div>
     </div>
   );
@@ -78,7 +75,7 @@ function GameCard({ g, map }: { g: Game; map: Map<string, Team> }) {
       })}
       {ph != null && (
         <div className="mt-3">
-          <WinBar p={ph} lo={g.plo} hi={g.phi} a={a} h={h} />
+          <WinBar p={ph} a={a} h={h} />
           <div className="mt-2 flex justify-between text-xs text-muted">
             <span>
               {nm(favH ? h : a)} by {fmt(Math.abs(g.pm ?? 0), 1)} · total {fmt((g.ph ?? 0) + (g.pa ?? 0), 0)}
@@ -141,7 +138,7 @@ export default function TodayView() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">{replay ? "Replay" : day === new Date().toISOString().slice(0, 10) ? "Today" : "Games"}: {day ? prettyDate(day) : "…"}</h1>
-          <p className="mt-1 text-muted">Predicted score, win probability (bar shows the 80% interval) and result versus expectation for every game.</p>
+          <p className="mt-1 text-muted">Predicted score, win probability and result versus expectation for every game.</p>
         </div>
         <div className="flex items-center gap-2">
           <button className="chip hover:text-ink" onClick={() => go(addDays(day, -1))}>← Prev</button>

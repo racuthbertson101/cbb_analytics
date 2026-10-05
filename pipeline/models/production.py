@@ -28,7 +28,12 @@ def day_number(date) -> int:
 
 
 class Predictor:
-    """Wraps fitted ratings with the spread model, Platt/isotonic calibration and residual-quantile intervals."""
+    """Wraps fitted ratings with the spread model, Platt/isotonic calibration and residual-quantile intervals.
+
+The 80% interval is an OUTCOME interval on the margin (80% of results land in it). There is deliberately no interval on
+the win probability: pushing outcome quantiles through the CDF gives ~10%-90% for every game (AUDIT M-1). An estimate
+interval from rating uncertainty is planned (IMPROVEMENT_PLAN Phase 5).
+"""
 
     def __init__(self, ratings: adjeff.Ratings, prod: dict):
         self.r, self.prod = ratings, prod
@@ -47,15 +52,13 @@ class Predictor:
         m = sa - sb
         return pd.DataFrame({"margin": m, "total": sa + sb, "score_a": sa, "score_b": sb, "poss": poss,
                              "win_prob_a": self._win_prob(m, poss),
-                             "margin_lo": m + self.q["0.1"], "margin_hi": m + self.q["0.9"],
-                             "win_prob_lo": self._win_prob(m + self.q["0.1"], poss),
-                             "win_prob_hi": self._win_prob(m + self.q["0.9"], poss)})
+                             "margin_lo": m + self.q["0.1"], "margin_hi": m + self.q["0.9"]})
 
     def predict(self, team_a, team_b, site=1.0, date=None) -> dict:
         i, j = self.r.tix[team_a], self.r.tix[team_b]
         d = self.predict_arrays(np.array([i]), np.array([j]), np.array([float(site)])).iloc[0]
         return {"margin": d.margin, "total": d.total, "score_a": d.score_a, "score_b": d.score_b, "win_prob_a": d.win_prob_a,
-                "interval": {"level": 0.8, "margin": [d.margin_lo, d.margin_hi], "win_prob": [d.win_prob_lo, d.win_prob_hi],
+                "interval": {"level": 0.8, "margin": [d.margin_lo, d.margin_hi],
                              "score_a": [d.score_a + self.sq["0.1"], d.score_a + self.sq["0.9"]],
                              "score_b": [d.score_b + self.sq["0.1"], d.score_b + self.sq["0.9"]]}}
 
