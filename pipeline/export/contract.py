@@ -159,6 +159,8 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
                          "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p, "ph": r.ph, "pa": r.pa,
                          "ar": None if pd.isna(r.away_rank) or r.away_rank > 25 else int(r.away_rank),
                          "hr": None if pd.isna(r.home_rank) or r.home_rank > 25 else int(r.home_rank),
+                         **({} if r.away_id in d1_ids else {"an": names.get(r.away_id, {}).get("display_name")}),
+                         **({} if r.home_id in d1_ids else {"hn": names.get(r.home_id, {}).get("display_name")}),
                          "d1": bool(r.both_d1), "note": r.notes if isinstance(r.notes, str) else None,
                          "dt": None if pd.isna(r.game_datetime) else r.game_datetime.strftime("%Y-%m-%dT%H:%MZ"),
                          "v": r.venue if isinstance(r.venue, str) else None, "att": None if pd.isna(r.attendance) or not r.attendance else int(r.attendance),

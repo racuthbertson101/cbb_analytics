@@ -31,7 +31,7 @@ IGNORE_URL = re.compile(r"__next\.[^/]*\.txt|\.txt\?_rsc=")
 
 
 def routes() -> dict[str, str]:
-    """20 routes covering every page type, current season, upcoming (preseason) season and history."""
+    """Routes covering every page type, current season, upcoming (preseason) season, history and Game pages."""
     meta = json.loads((OUT / "data" / "meta.json").read_text())
     cur, up = meta["current_season"], meta.get("upcoming_season")
     pl = json.loads((OUT / "data" / "players" / f"{cur}.json").read_text())
@@ -60,6 +60,15 @@ def routes() -> dict[str, str]:
     if up:
         r["rankings_preseason"] = f"/rankings/?season={up}"
         r["team_preseason"] = f"/team/2390/?season={up}"
+    # Game pages: the current season's national final, a 2014-15 game, a game against a non-D-I team, two upcoming games
+    games = lambda y: json.loads((OUT / "data" / "games" / f"{y}.json").read_text())["games"]  # noqa: E731
+    gc = games(cur)
+    r["game_final"] = f"/game/?id={[x for x in gc if x['t'] == 'ncaa'][-1]['id']}&season={cur}"
+    r["game_2015"] = f"/game/?id={[x for x in games(2015) if x['t'] == 'ncaa'][-1]['id']}&season=2015"
+    r["game_non_d1"] = f"/game/?id={next(x for x in gc if x['ok'] and not x['d1'])['id']}&season={cur}"
+    nxt = games(up) if up else [x for x in gc if not x["ok"]]
+    for i, x in enumerate(sorted([x for x in nxt if x.get("w") is not None and not x["ok"]], key=lambda x: -x["w"])[:2]):
+        r[f"game_upcoming_{i + 1}"] = f"/game/?id={x['id']}&season={up or cur}"
     return r
 
 

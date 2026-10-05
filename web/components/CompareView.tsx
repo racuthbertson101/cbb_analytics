@@ -3,23 +3,11 @@ import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Ratings, useJson, useMeta, useTeams } from "@/lib/data";
 import { fmt, pct, seasonLabel, signed } from "@/lib/util";
+import { cdf, interp, Pred } from "@/lib/predict";
 import TeamLogo from "./TeamLogo";
 import SeasonChip from "./ui/SeasonChip";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number };
-type Pred = { sigma_coef: number[]; cal_x: number[]; cal_y: number[]; q10: number; q90: number; score_q10: number; score_q90: number };
-
-const erf = (x: number) => {
-  const s = Math.sign(x), a = Math.abs(x), t = 1 / (1 + 0.3275911 * a);
-  return s * (1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-a * a));
-};
-const cdf = (z: number) => 0.5 * (1 + erf(z / Math.SQRT2));
-const interp = (x: number, xs: number[], ys: number[]) => {
-  if (x <= xs[0]) return ys[0];
-  for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + ((ys[i] - ys[i - 1]) * (x - xs[i - 1])) / (xs[i] - xs[i - 1]);
-  return ys[ys.length - 1];
-};
-
 export default function CompareView() {
   const meta = useMeta();
   const { teams, map } = useTeams();

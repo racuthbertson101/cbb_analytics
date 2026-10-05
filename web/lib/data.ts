@@ -41,6 +41,7 @@ export type Game = {
   id: string; d: string; a: string; h: string; as: number | null; hs: number | null; n: boolean; t: string; cg: boolean; ok: boolean;
   pm: number | null; pp: number | null; p: number | null; ph: number | null; pa: number | null;
   ar: number | null; hr: number | null; d1: boolean; note: string | null; w: number | null; wc: (number | null)[] | null;
+  dt?: string | null; v?: string | null; att?: number | null; tv?: string | null; an?: string | null; hn?: string | null;
 };
 export type Ratings = { season: number; dates: string[]; teams: string[]; off: (number | null)[][]; def: (number | null)[][]; tempo: (number | null)[][]; gp: (number | null)[][] };
 
