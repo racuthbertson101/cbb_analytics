@@ -46,4 +46,4 @@ nightly:
 test:
 	uv run pytest -q
 shots:
-	$(PY) -m pipeline.tools.shots
+	uv run --with playwright python -m pipeline.tools.screenshots

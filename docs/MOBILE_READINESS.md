@@ -13,4 +13,4 @@ The site is desktop first (1280-1920 px). Nothing blocks mobile, but these are t
 9. **Data weight**: per-season JSON shards are 1-3 MB (games, ratings, systems). On mobile networks lazy-load the systems shard only when a non-default system or the Résumé view is chosen, and gzip is applied by GitHub Pages already.
 10. **Viewport/meta and PWA**: add `viewport` meta (Next adds a default), a web manifest and icons, and a service worker caching `/data/*.json` (see `docs/EXTENDING.md`).
 11. **Typography**: `font-size: 14px` base with dense tables; verify contrast of the heat cells outside a dark room (the diverging scale keeps lightness in a narrow band by design).
-12. **Testing**: extend `pipeline/tools/shots.py` with a 390x844 viewport pass and check for horizontal overflow on every page group.
+12. **Testing**: extend `pipeline/tools/screenshots.py` with a 390x844 viewport pass and check for horizontal overflow on every page group.
