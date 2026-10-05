@@ -3,9 +3,10 @@
     python -m pipeline.release upload [--dry-run]     # after a nightly run
     python -m pipeline.release download [--dry-run]   # at the start of a nightly run (fresh CI checkout)
 
-Asset naming: <table>__<season>.parquet, model_artifacts.tar.gz (data/backtest), prediction_log.parquet.
+Asset naming: <table>__<season>.parquet, model_artifacts.tar.gz (data/backtest), prediction_log.parquet,
+shot_bins.tar.gz (the binned shot-chart shards from pipeline.export.shots, not raw shots).
 DECISION (DECISIONS.md): the nightly downloads ALL seasons of the (small) tables because Elo, consensus and the site exports use
-full history; play-by-play and shots are never published.
+full history; play-by-play and raw shots are never published.
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ TAG = "warehouse"
 TABLES = ["games", "team_games", "player_games", "teams", "team_seasons", "rosters", "player_seasons", "player_impacts"]
 ART = ROOT / "data" / "backtest"
 LOG = ROOT / "data" / "predictions" / "log.parquet"
+SHOTS = ROOT / "web" / "public" / "data" / "shots"
 
 
 def sh(cmd: list[str], dry: bool):
@@ -56,6 +58,12 @@ def upload(dry=False):
         files.append(str(tgz))
     if LOG.exists():
         files.append(_stage(LOG, "prediction_log.parquet", dry))
+    if any(SHOTS.glob("*/league.json")):
+        stgz = ROOT / "data" / "shot_bins.tar.gz"
+        if not dry:
+            with tarfile.open(stgz, "w:gz") as tf:
+                tf.add(SHOTS, arcname="shots")
+        files.append(str(stgz))
     for f in files:  # one asset per call: batched uploads failed intermittently
         for attempt in range(3):
             try:
@@ -80,6 +88,10 @@ def download(dry=False):
     if tgz.exists():
         with tarfile.open(tgz) as tf:
             tf.extractall(ROOT / "data")
+    stgz = out / "shot_bins.tar.gz"
+    if stgz.exists():
+        with tarfile.open(stgz) as tf:
+            tf.extractall(SHOTS.parent)
     lg = out / "prediction_log.parquet"
     if lg.exists():
         LOG.parent.mkdir(parents=True, exist_ok=True)

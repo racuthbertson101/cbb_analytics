@@ -89,8 +89,9 @@ export default function TeamView({ id }: { id: string }) {
   }, [meta, id]);
   const PL = usePlayers(meta && season && !upcoming ? season : null);
   const roster = useMemo(() => (PL?.rows ?? []).filter((r) => r.tid === id).sort((a, b) => (b.min as number) - (a.min as number)), [PL, id]);
-  const { data: SH } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/${id}.json` : null);
-  const { data: SHL } = useJson<{ bins: Bins }>(meta && season === meta.current_season ? `shots/${season}/league.json` : null);
+  const hasShots = !!season && !!meta?.shot_seasons?.includes(season);
+  const { data: SH } = useJson<{ bins: Bins }>(hasShots ? `shots/${season}/${id}.json` : null);
+  const { data: SHL } = useJson<{ bins: Bins }>(hasShots ? `shots/${season}/league.json` : null);
   const seasons = [...(meta?.seasons ?? []), ...(meta?.upcoming_season ? [meta.upcoming_season] : [])].reverse();
   const stats = S?.rows[id];
   const rankOfStat = (k: string, higher = true) => {

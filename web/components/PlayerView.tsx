@@ -28,8 +28,9 @@ export default function PlayerView() {
   const p = useMemo(() => pl?.rows.find((r) => r.id === id) ?? null, [pl, id]);
   const { data: L } = useJson<Logs>(p && meta && season > meta.current_season - 3 ? `playerlogs/${season}/${p.tid}.json` : null);
   const { data: C } = useJson<Career>(id ? `playercareer/${Number(id) % 100}.json` : null);
-  const { data: SH } = useJson<{ players: Record<string, Bins> }>(p && meta && season === meta.current_season ? `shots/${season}/${p.tid}.json` : null);
-  const { data: SHL } = useJson<{ bins: Bins }>(p && meta && season === meta.current_season ? `shots/${season}/league.json` : null);
+  const hasShots = !!p && !!season && !!meta?.shot_seasons?.includes(season);
+  const { data: SH } = useJson<{ players: Record<string, Bins> }>(hasShots ? `shots/${season}/${p?.tid}.json` : null);
+  const { data: SHL } = useJson<{ bins: Bins }>(hasShots ? `shots/${season}/league.json` : null);
   const team = p ? map.get(p.tid as string) : undefined;
   const career = C?.[id] ?? [];
   const log = (L?.logs[id] ?? []).slice().reverse();

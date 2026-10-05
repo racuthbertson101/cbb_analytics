@@ -24,6 +24,7 @@ jobs:
       - run: uv run python -m pipeline.release download
       - run: |
           uv run python -m pipeline.export.conferences --stats --sim 2026:2026-02-15 2026:2026-04-10
+          uv run python -m pipeline.export.shots
           uv run python -m pipeline.export.contract
           uv run python -m pipeline.export.players
           uv run python -m pipeline.export.systems

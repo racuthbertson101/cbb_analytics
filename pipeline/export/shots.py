@@ -12,15 +12,15 @@ import pandas as pd
 from pipeline.ingest import download
 from pipeline.warehouse.paths import CURRENT_SEASON, table_path
 
-from .contract import write
+from .contract import OUT, write
 
 BIN = 3.0
 SHOT_SEASONS = 1  # latest season only: the 2025 shots file covers only ~1/4 as many shots as 2026 (source gap, KNOWN_ISSUES)
 MIN_PLAYER_SHOTS = 25
 
 
-def prep(season: int) -> pd.DataFrame | None:
-    p = download.fetch("shots", season)
+def prep(season: int, force: bool = False) -> pd.DataFrame | None:
+    p = download.fetch("shots", season, force=force)
     if p is None:
         return None
     d = pd.read_parquet(p, columns=["game_id", "team_id", "athlete_id_1", "type_text", "scoring_play", "score_value", "coordinate_x", "coordinate_y"])
@@ -41,9 +41,16 @@ def bins(df: pd.DataFrame):
     return [[int(r.bx), int(r.by), int(r["size"]), int(r["sum"])] for _, r in g.iterrows()]
 
 
-def export_shots(last_season=CURRENT_SEASON):
+def available_seasons() -> list[int]:
+    """Seasons whose shards exist; the site only requests shots for these (no 404s when the source is missing)."""
+    d = OUT / "shots"
+    return sorted(int(p.parent.name) for p in d.glob("*/league.json")) if d.exists() else []
+
+
+def export_shots(last_season=CURRENT_SEASON, force: bool = False):
+    """Write shards for the latest season(s). Missing source = no-op (shards from the release, if any, are kept)."""
     for y in range(last_season - SHOT_SEASONS + 1, last_season + 1):
-        d = prep(y)
+        d = prep(y, force)
         if d is None:
             continue
         ts = pd.read_parquet(table_path("team_seasons", y))

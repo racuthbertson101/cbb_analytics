@@ -163,7 +163,12 @@ def main(argv=None):
         for d_ in (f"{cur}-02-15", last_):
             conferences.sim_standings(cur, d_, nsim=a.nsim, workers=a.workers)
 
-    # 7. exports
+    # 7. exports (shot shards first: meta.shot_seasons lists what exists). Shards come with the release download;
+    # rebuilt when missing, and weekly in season once the source publishes the live season's shots.
+    from pipeline.export import shots
+
+    if not (contract.OUT / "shots" / str(cur) / "league.json").exists() or (live and today.weekday() == 0):
+        shots.export_shots(cur, force=live)
     upcoming = season if not live else None
     contract.export_all(current=cur, upcoming=upcoming)
     players.export_players()

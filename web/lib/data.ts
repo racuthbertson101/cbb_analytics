@@ -36,7 +36,7 @@ export function useJson<T>(path: string | null): { data: T | null; error: string
 }
 
 export type Team = { id: string; name: string; short: string; abbr: string; loc: string; color: string; alt: string; logo: string; conf: Record<string, string> };
-export type Meta = { version: number; current_season: number; upcoming_season: number | null; upcoming_first_date: string | null; seasons: number[]; last_game_date: string; default_asof: string; current_last_date: string; season_first_date: string; generated: string };
+export type Meta = { version: number; current_season: number; upcoming_season: number | null; shot_seasons?: number[]; upcoming_first_date: string | null; seasons: number[]; last_game_date: string; default_asof: string; current_last_date: string; season_first_date: string; generated: string };
 export type Game = {
   id: string; d: string; a: string; h: string; as: number | null; hs: number | null; n: boolean; t: string; cg: boolean; ok: boolean;
   pm: number | null; pp: number | null; p: number | null; ph: number | null; pa: number | null;
