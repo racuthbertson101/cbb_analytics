@@ -12,8 +12,8 @@ Source: sportsdataverse-data GitHub releases (hoopR ESPN men's college basketbal
 | rosters | ..._rosters | 2025-2027 only | class, height, position. Earlier seasons must be derived from player box |
 | player season stats | ..._player_season_stats | 2025-2026 only | |
 | team season stats | ..._team_season_stats | 2003-2026 | |
-| pbp | ..._pbp | 2003, 2006-2026 | large (5-90 MB/season); local only |
-| shots | ..._shots | 2003, 2006-2026 | x/y shot locations; local only |
+| pbp | ..._pbp | 2003, 2006-2026 | large (5-90 MB/season); available but NOT downloaded yet (checked 2026-10-05: no `data/raw/sdv/pbp`) |
+| shots | ..._shots | 2003, 2006-2026 | x/y shot locations; 2025-2026 downloaded; raw files local only, binned shards published as `shot_bins.tar.gz` |
 | NCAA lineups / RAPM | ncaa_mbb_lineups (2010-2019+), ncaa_mbb_rapm (2011-2020) | 2010/11-2020ish | stats.ncaa.org derived, different ID space than ESPN; needs crosswalk (Phase 9) |
 | mbb_ratings, mbb_player_value | mbb_ratings, mbb_player_value | 2006-2026 | third-party derived; NOT used (provenance unclear, would leak other systems' opinions) |
 
@@ -66,4 +66,4 @@ Threshold (logged in DECISIONS.md): >=98% of completed games with both team boxe
 - Phase 2 ratings: games + team box (possessions estimate) + neutral flag.
 - Phase 4 players: player box (minutes), rosters (2025+), player season stats for cross-checks.
 - Phase 6 conferences: standings/conference ids by season, schedules with future games (2027 schedule exists).
-- Phase 9: pbp, shots, ncaa lineups/RAPM.
+- Phase 9: shots (2026 only) and the published NCAA RAPM comparison were done; pbp was never downloaded (planned for RAPM in IMPROVEMENT_PLAN.md Phase 5).

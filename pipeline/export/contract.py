@@ -7,6 +7,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from pipeline.models.backtest import BT
 from pipeline.models.data import load_games
@@ -242,6 +243,8 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
     # freshness for the site footer; the nightly run rewrites this with its own details (pipeline/nightly.py)
     write("status.json", {"data_through": last_dates[cur], "season": cur, "updated": pd.Timestamp.now("UTC").isoformat(), "source": "export"})
     write("tournament.json", {"status": "coming_soon", "brackets": []})
+    wcfg = yaml.safe_load((ROOT / "config" / "watchability.yaml").read_text(encoding="utf8"))
+    write("params/watchability.json", {"weights": wcfg["weights"], "stakes_weights": wcfg["stakes_weights"]})
     write("params/predict.json", {"sigma_coef": prod["sigma_coef"], "cal_x": prod["calibration_grid_x"][::5], "cal_y": prod["calibration_grid_y"][::5],
                                   "q10": prod["margin_residual_quantiles"]["0.1"], "q90": prod["margin_residual_quantiles"]["0.9"],
                                   "score_q10": prod["score_residual_quantiles"]["0.1"], "score_q90": prod["score_residual_quantiles"]["0.9"]})

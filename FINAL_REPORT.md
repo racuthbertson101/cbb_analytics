@@ -1,13 +1,15 @@
 # Final report
 
+> **Note (2026-10-05):** this report describes the build as of 2026-09-29. The audit that followed (`AUDIT.md`) found gaps it did not mention: the spec's Game page was never built, play-by-play was never downloaded, shot charts returned 404 on the live site, and the win-probability band was not a real interval. Fixes are tracked in `IMPROVEMENT_PLAN.md`, and current status is in `PROGRESS.md`. Backtest numbers below are from 2026-09-29. The live Methodology page and `pipeline/params/BACKTEST.md` hold the current numbers.
+
 ## Status in one paragraph
 
-Everything in the spec was built and verified locally: warehouse (2008-2027), adjusted-efficiency ratings with a walk-forward backtest, five more ranking systems and a consensus, a player layer, conference simulations with per-conference tiebreaker rules, watchability, an append-only prediction log, a 413-page static site, a nightly pipeline plus replay test, workflows, docs and stretch items. ****Update: it is now published** at https://racuthbertson101.github.io/cbb_analytics/ (repo racuthbertson101/cbb_analytics; `deploy.yml` and a manual `nightly.yml` dispatch both succeeded).
+Most of the spec was built and verified locally (the Game page and play-by-play RAPM were not): warehouse (2008-2027), adjusted-efficiency ratings with a walk-forward backtest, five more ranking systems and a consensus, a player layer, conference simulations with per-conference tiebreaker rules, watchability, an append-only prediction log, a 413-page static site, a nightly pipeline plus replay test, workflows, docs and stretch items. ****Update: it is now published** at https://racuthbertson101.github.io/cbb_analytics/ (repo racuthbertson101/cbb_analytics; `deploy.yml` and a manual `nightly.yml` dispatch both succeeded).
 
 ## What works (verified)
 
 - **Tests**: 161 pass (warehouse validation for every season, leakage, tiebreaker scenarios including a three-team tie, conference simulation sanity, prediction-log tamper detection, watchability, tournament stub, ESPN parser vs warehouse, nightly window logic, player rate sanity).
-- **Warehouse**: idempotent build (hash-verified); D-I count 341-365 per season; NCAA tournament games found for every season (some source gaps: 2009/2010/2013).
+- **Warehouse**: idempotent build (hash-verified); D-I count 341-365 per season; NCAA tournament games found for every season (the 2009/2010/2013 "source gaps" reported here were a classifier bug, fixed 2026-10-05).
 - **Incremental ESPN ingest** re-created 58 games (team and player box scores) for 2026-03-19..24 with 100% agreement on scores, flags, team stats and player minutes/points, and a second run changed nothing.
 - **Replay test** (`make replay DATE=2026-02-15`): truncates the warehouse to that morning, re-ingests from ESPN with results masked, validates, refits, predicts the next 7 days (378 predictions logged), simulates conferences, exports and builds. Ratings match the walk-forward backtest within 0.02 points. Offseason mode (`--today 2026-09-29`) also runs end to end.
 - **Site**: Today (with replay `?asof=` / `?date=`), Rankings (6 systems, résumé view, as-of date, preseason 2026-27), Team, Player, Players, Conferences, Conference, Accuracy, Compare, Methodology, Tournament placeholder, Ctrl+K search. Also verified under `basePath=/cbb_analytics`.
@@ -26,11 +28,11 @@ Ridge strength 3, no recency decay, blowout cap 60 (essentially neutral), team-s
 
 ## Every fallback and judgment call (details in DECISIONS.md / KNOWN_ISSUES.md)
 
-- **GitHub blocked** (above). All GitHub-dependent phase checks (push, release assets, live URL, workflow dispatch) are therefore not done.
+- **GitHub** was blocked at first and unblocked on 2026-09-29. Since then the repo, the `warehouse` release, Pages and the workflows are live, and manual nightly and deploy dispatches succeeded.
 - **A bug and a correction found late**: (1) the Crown pseudo-group dropped Oklahoma's D-I status in 2025-26 (fixed, every artifact refit); (2) my first roster-prior evaluation was invalid (athlete-id format made roster features all zero, so it said "not adopted"). After the fix the roster prior improved next-season team ratings in 14/14 (offense) and 12/14 (defense) walk-forward seasons and improved game-level log loss from 0.5289 to 0.5263, so it is adopted. The evidence is slightly optimistic because historical "rosters" are the players who actually appeared that season (true preseason rosters exist only for 2025+).
 - **Definitions** (labeled in code and on the Methodology page): start season 2008, D-I membership from standings, game-type heuristic, bubble = rank 45, SOR reference = top 25 average, NCAA quadrant cutoffs, weekly snapshots, our rating in place of NET/RPI. **Judgment call**: watchability weights (`config/watchability.yaml`).
 - **Conference tiebreakers**: 19 of 31 verified from official conference pages (via search excerpts and fetched pages); 12 fallback (Big Ten's PDF could not be read, some conferences had no findable official text). Tournament field sizes are config values, not verified.
-- Impact v1 scale is inflated for extreme rebounders/shot blockers and defense is weakly identified from box scores; it is a labeled v1.
+- Impact v1 scale is inflated for extreme rebounders/shot blockers and defense is weakly identified from box scores. Since 2026-10-05 it is shown only on player pages, labeled experimental.
 - Elo matches the ridge model closely on margin error; Bradley-Terry adds nothing to the consensus.
 - Shots data is complete only for 2026 (2025 file has about a quarter of the shots), so shot charts cover the latest season only. Game logs kept for 3 seasons (size budget). Non-adjusted systems and résumé metrics are weekly snapshots; player-driven rating is season-end only.
 - Nightly downloads all seasons of the small warehouse tables (not only current + previous) because Elo, consensus and site exports use full history.

@@ -36,6 +36,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function MethodologyView() {
   const meta = useMeta();
+  const wt = useJson<{ weights: Record<string, number>; stakes_weights: Record<string, number> }>("params/watchability.json").data;
   const bt = useJson<BT>("params/backtest.json").data;
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
@@ -46,7 +47,7 @@ export default function MethodologyView() {
   return (
     <div className="mx-auto max-w-[1100px]">
       <h1 className="mb-2 text-3xl font-semibold">Methodology<SeasonChip season={meta?.current_season} note="latest fit" /></h1>
-      <p className="mb-6 text-muted">Every fitted number on this page is generated from the pipeline&apos;s parameter files, so it cannot go stale. Definitions and judgment calls are labeled as such.</p>
+      <p className="mb-6 text-muted">Fitted numbers on this page are read from the pipeline&apos;s parameter files, so they match the latest fit. The prose around them is written by hand. Definitions and judgment calls are labeled as such.</p>
 
       <Section title="Data">
         <p>Game, team box score, player box score and standings data come from the open sportsdataverse / hoopR release files of ESPN men&apos;s college basketball data, refreshed from ESPN&apos;s public JSON endpoints. Seasons 2008 to present are used for ratings: from 2008 at least 98% of games have team and player box scores and a neutral-site flag. Seasons are named by the year they end (2026 = 2025-26). Only Division I vs Division I games enter rating fits; other games appear on schedules.</p>
@@ -75,11 +76,11 @@ export default function MethodologyView() {
             </tbody>
           </table>
         )}
-        <p>Predicted score = predicted possessions × predicted efficiency for each side. Win probability = normal CDF of predicted margin over σ, then calibrated (see below). Intervals come from historical residual quantiles (80% margin interval: {prod ? `${prod.margin_residual_quantiles["0.1"].toFixed(1)} to +${prod.margin_residual_quantiles["0.9"].toFixed(1)}` : "…"} points around the prediction).</p>
+        <p>Predicted score = predicted possessions × predicted efficiency for each side. Win probability = normal CDF of predicted margin over σ, then calibrated (see below). The 80% interval is an outcome interval on the margin: 80% of historical results landed within {prod ? `${prod.margin_residual_quantiles["0.1"].toFixed(1)} to +${prod.margin_residual_quantiles["0.9"].toFixed(1)}` : "…"} points of the prediction. It describes game-to-game randomness, not uncertainty in the ratings. There is no interval on the win probability itself yet: one based on rating uncertainty is planned and will be shown only after it is validated.</p>
       </Section>
 
       <Section title="Backtest (walk-forward, no leakage)">
-        <p>For every game in {bt ? seasonRange(bt.test_seasons[0], bt.test_seasons[1]) : "…"} the model is refit each game day on earlier games only. Hyperparameters for season S are chosen using seasons before S; the spread model and calibrator for S are fit on predictions from seasons before S. A test in the repository proves that changing the results of a game (or of any game on the same day or later) does not change earlier predictions.</p>
+        <p>For every game in {bt ? seasonRange(bt.test_seasons[0], bt.test_seasons[1]) : "…"} the model is refit each game day on earlier games only. Hyperparameters and preseason-prior coefficients for season S are chosen using seasons before S, and the spread and calibration parameters for S are fit on predictions from seasons before S. Two one-time choices were made on pooled results from all test seasons: the spread form (constant or tempo-dependent) and the calibrator type (none, Platt or isotonic). The candidates differ by less than 0.001 in log loss. A test in the repository proves that changing the results of a game (or of any game on the same day or later) does not change earlier predictions.</p>
         {bt ? (
           <>
             <table className="dense prose">
@@ -154,8 +155,8 @@ export default function MethodologyView() {
         <p>Conference standings are simulated at least 20,000 times: completed conference games are fixed, and each remaining game is sampled as predicted margin plus normal noise (spread from the margin-spread model above) with a sampled total (noise sd from backtest residuals), rounded to integer scores so point-differential rules work. Each simulated final table is ordered with that conference&apos;s own tiebreaker rules (data files in <code>config/tiebreakers</code>), where a partially resolved multi-team tie restarts from the first rule for the teams still tied, and coin flips or draws are random. Steps that use NET or RPI use our adjusted-efficiency rating instead. Each conference is labeled <b className="text-ink">verified</b> (rule text found on an official conference page) or <b className="text-ink">fallback</b> (generic or best-known rules); see each conference page for its source link. Tournament field sizes are configuration values for the 2025-26 format. Best/worst possible finish uses win-count bounds.</p>
       </Section>
 
-      <Section title="Player impact rating (v1, box-score based)">
-        <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. Impact is shrunk toward zero for low minutes (weight minutes / (minutes + k)).</p>
+      <Section title="Player impact rating (v1, box-score based, experimental)">
+        <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. A low-minutes shrinkage (weight minutes / (minutes + k)) was tested; k is in the table below, and 0 means validation chose none. This rating fails a basic smell test: it rewards rebounding and shot blocking far too much, so backup centers can outrank star guards. The site shows it only on player pages, labeled experimental, and a play-by-play (RAPM) replacement is planned.</p>
         {pl && (<>
           <table className="dense prose"><tbody>
             <tr><td className="l">Ridge strength (leave-one-season-out CV)</td><td>{pl.alpha}</td></tr>
@@ -172,18 +173,27 @@ export default function MethodologyView() {
 
       <Section title="Definitions (not fitted)">
         <ul className="list-disc space-y-1 pl-5">
-          <li>Season = year the season ends. Division I membership for a season = teams listed in a D-I conference in that season&apos;s standings.</li>
-          <li>Game type is derived from ESPN season type and event headline. Conference tournament games with no headline on a non-neutral site are labeled regular season (a known limitation).</li>
+          <li>Season = year the season ends. Division I membership for a season = teams listed in a D-I conference in that season&apos;s standings; for the upcoming season, before standings exist, ESPN&apos;s current conference membership list.</li>
+          <li>Game type is derived from ESPN season type, tournament id and event headline; every NCAA tournament game is treated as neutral-site. Conference tournament games with no headline on a non-neutral site are labeled regular season (a known limitation).</li>
           <li>Possessions = FGA - OREB + TO + c · FTA, averaged over the two teams, with c fitted (above).</li>
           <li>SOS = mean AdjEM of D-I opponents faced. Luck = actual wins minus the sum of pregame win probabilities in D-I games.</li>
           <li>Heat colors show percentile among D-I teams (teal = better, orange = worse).</li>
         </ul>
       </Section>
 
+      <Section title="Watchability (judgment call)">
+        <p>Each upcoming game gets a 1-10 watchability score. Five components are each scaled to 0-100 by their percentile among historical D-I games (data-derived): quality (average AdjEM of the two teams), competitiveness (small predicted margin), tempo (predicted possessions), star power (best player impact on either team, which inherits the experimental impact rating&apos;s bias toward big men) and stakes (rank proximity, conference-title leverage from the standings simulation, bubble proximity). The weights are <b className="text-ink">chosen by hand, not fitted</b>: there is no ground truth for how watchable a game is. Score = 1 + 9 × weighted average percentile / 100. A component that is unavailable for a game has its weight redistributed.</p>
+        {wt && (
+          <table className="dense prose"><tbody>
+            {Object.entries(wt.weights).map(([k, v]) => <tr key={k}><td className="l">{k.replace("_", " ")}</td><td>{v.toFixed(2)}</td></tr>)}
+            {Object.entries(wt.stakes_weights).map(([k, v]) => <tr key={k}><td className="l text-muted">stakes: {k.replace("_", " ")}</td><td>{v.toFixed(2)}</td></tr>)}
+          </tbody></table>
+        )}
+      </Section>
+
       <Section title="Judgment calls">
         <ul className="list-disc space-y-1 pl-5">
           <li>Seasons before 2008 are excluded from fits for coverage reasons; 2021 (COVID) is kept but was irregular.</li>
-          <li>Top matchups on the Today page are ordered by the average AdjEM of the two teams; a fuller watchability score arrives later with its own labeled weights.</li>
           <li>Numerical stabilizer: a penalty equal to one game-row on the league mean, home court and mean tempo keeps them defined before any games are played.</li>
         </ul>
       </Section>
