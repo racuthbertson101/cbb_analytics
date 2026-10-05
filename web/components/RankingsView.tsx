@@ -31,7 +31,7 @@ export default function RankingsView() {
   const router = useRouter();
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const upcoming = !!meta && meta.upcoming_season != null && season === meta.upcoming_season;
-  const confSeason = upcoming ? season - 1 : season;
+  const confSeason = season; // the upcoming season has its own membership (ESPN list, pipeline/ingest/membership.py)
   const { data: R } = useJson<Ratings>(meta && season && !upcoming ? `ratings/${season}.json` : null);
   const { data: G } = useJson<{ games: Game[] }>(meta && season && !upcoming ? `games/${season}.json` : null);
   const { data: SY } = useJson<Sys>(meta && season && !upcoming ? `systems/${season}.json` : null);

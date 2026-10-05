@@ -85,11 +85,27 @@ def sim_standings(season, asof, nsim=20000, workers=8, keep_only=False):
 
 
 def tiebreak_index():
+    """One row per conference page: every tiebreaker config, plus every conference name in the data without its own config
+    (renamed or defunct leagues such as the Pac-12 or the United Athletic Conference), which use an alias or the fallback rules."""
+    import yaml
+
+    keys = ("conference", "status", "rules", "qualifiers", "bye_seed_lines", "source_url", "notes", "researched")
     rows = []
     for p in sorted(CFG_DIR.glob("*.yaml")):
-        import yaml
         d = yaml.safe_load(p.read_text(encoding="utf8"))
-        rows.append({"id": slug(d["conference"]), **{k: d.get(k) for k in ("conference", "status", "rules", "qualifiers", "bye_seed_lines", "source_url", "notes", "researched")}})
+        rows.append({"id": slug(d["conference"]), **{k: d.get(k) for k in keys}})
+    have = {r["id"] for r in rows}
+    names = set()
+    for y in range(FIRST, CURRENT_SEASON + 2):
+        if table_path("team_seasons", y).exists():
+            ts = pd.read_parquet(table_path("team_seasons", y), columns=["conference", "is_d1"])
+            names |= set(ts.conference[ts.is_d1].dropna())
+    for name in sorted(names):
+        if slug(name) in have:
+            continue
+        d = load_cfg(name)
+        note = f"Uses the {d['conference']} rules (renamed league)." if d["conference"] != "_fallback" else "No researched rules: generic fallback."
+        rows.append({"id": slug(name), **{k: d.get(k) for k in keys}, "conference": name, "status": "fallback", "notes": note})
     write("tiebreakers.json", {"rows": rows})
 
 

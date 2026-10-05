@@ -6,7 +6,7 @@ Build first without a basePath (cd web && npx next build). Writes screenshots/<r
 with, per page: console errors, page errors, 4xx/5xx responses, failed requests, horizontal overflow (document wider than the
 viewport, plus the widest offending elements) and broken images. Exit code 1 if any page has a problem.
 
-Ignored on purpose: 404s for RSC prefetch files (`__next.*.txt`). The Windows build writes them as nested folders, the Linux
+Ignored on purpose: requests aborted by navigation (Next.js link prefetches, net::ERR_ABORTED), and 404s for RSC prefetch files (`__next.*.txt`). The Windows build writes them as nested folders, the Linux
 build that deploys writes flat files, and the live site returns 200 (AUDIT F-14).
 """
 from __future__ import annotations
@@ -50,8 +50,8 @@ def routes() -> dict[str, str]:
         "players": "/players/",
         "players_2025": "/players/?season=2025",
         "conferences": "/conferences/",
-        "conference_bigten": "/conference/7/",
-        "conference_acc": "/conference/2/",
+        "conference_bigten": "/conference/big_ten_conference/",
+        "conference_acc": "/conference/atlantic_coast_conference/",
         "compare": "/compare/?a=57&b=150",
         "predictions": "/predictions/",
         "methodology": "/methodology/",
@@ -104,7 +104,7 @@ def main(argv=None) -> int:
                 pg.on("console", lambda m: ev["console"].append(m.text[:200]) if m.type == "error" and not IGNORE_URL.search(m.text) and "404" not in m.text else None)
                 pg.on("pageerror", lambda e: ev["pageerror"].append(str(e)[:200]))
                 pg.on("response", lambda r: ev["http"].append(f"{r.status} {r.url}") if r.status >= 400 and not IGNORE_URL.search(r.url) else None)
-                pg.on("requestfailed", lambda r: ev["failed"].append(r.url[:150]) if not IGNORE_URL.search(r.url) else None)
+                pg.on("requestfailed", lambda r: ev["failed"].append(f"{r.failure} {r.url[:150]}") if not IGNORE_URL.search(r.url) and "ERR_ABORTED" not in (r.failure or "") else None)
                 for name, path in pages.items():
                     ev.update(console=[], pageerror=[], http=[], failed=[])
                     t = time.time()
