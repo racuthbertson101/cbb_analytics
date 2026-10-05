@@ -56,7 +56,7 @@ def backtest_summary():
     recent = O[(O.season == O.season.max()) & (O.game_type == "regular")].sort_values("date", ascending=False).head(60)
     write("accuracy/backtest.json", {"per_season": per, "reliability_last3": rel, "ece_last3": ece, "buckets_last3": bucket_table(last.p_final.values, last.y.values),
                                      "last3_seasons": [int(O.season.max() - 2), int(O.season.max())]})
-    write("accuracy/recent.json", {"rows": [{"d": str(r.date.date()), "a": r.b, "h": r.a, "pm": round(float(r.margin_pred), 1), "p": round(float(r.p_final), 3), "m": int(r.margin), "n": bool(r.site == 0)} for r in recent.itertuples()]})
+    write("accuracy/recent.json", {"rows": [{"id": str(r.game_id), "s": int(r.season), "d": str(r.date.date()), "a": r.b, "h": r.a, "pm": round(float(r.margin_pred), 1), "p": round(float(r.p_final), 3), "m": int(r.margin), "n": bool(r.site == 0)} for r in recent.itertuples()]})
 
 
 if __name__ == "__main__":

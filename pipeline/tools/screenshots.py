@@ -4,7 +4,8 @@
 
 Build first without a basePath (cd web && npx next build). Writes screenshots/<route>_<width>.png and screenshots/report.json
 with, per page: console errors, page errors, 4xx/5xx responses, failed requests, horizontal overflow (document wider than the
-viewport, plus the widest offending elements) and broken images. Exit code 1 if any page has a problem.
+viewport, plus the widest offending elements), broken images and scores (`.score`) not inside a /game/ link. Exit code 1 if
+any page has a problem.
 
 Ignored on purpose: requests aborted by navigation (Next.js link prefetches, net::ERR_ABORTED), and 404s for RSC prefetch files (`__next.*.txt`). The Windows build writes them as nested folders, the Linux
 build that deploys writes flat files, and the live site returns 200 (AUDIT F-14).
@@ -86,6 +87,9 @@ OVERFLOW_JS = """() => {
   }
   return { viewport: vw, scrollWidth: sw, offenders: wide.slice(0, 5) };
 }"""
+# IMPROVEMENT_PLAN 3a.5: every rendered score sits inside a link to its Game page
+SCORE_JS = """() => { const all = [...document.querySelectorAll('.score')];
+  return { n: all.length, unlinked: all.filter(e => !e.closest('a[href*="/game/"]')).map(e => e.textContent.trim()).slice(0, 5) }; }"""
 BROKEN_IMG_JS = """() => [...document.images].filter(i => i.complete && i.naturalWidth === 0 && i.src).map(i => i.src).slice(0, 10)"""
 
 
@@ -122,17 +126,18 @@ def main(argv=None) -> int:
                     pg.wait_for_timeout(800)
                     ov = pg.evaluate(OVERFLOW_JS)
                     imgs = pg.evaluate(BROKEN_IMG_JS)
+                    sc = pg.evaluate(SCORE_JS)
                     pg.screenshot(path=str(SHOTS / f"{name}_{w}.png"))
                     rec = {**{k: list(v) for k, v in ev.items()}, "overflow": ov if ov["scrollWidth"] > ov["viewport"] else None,
-                           "broken_images": imgs, "load_s": round(time.time() - t, 2), "path": path}
-                    rec["ok"] = not (rec["console"] or rec["pageerror"] or rec["http"] or rec["failed"] or rec["overflow"] or imgs)
+                           "broken_images": imgs, "scores": sc["n"], "unlinked_scores": sc["unlinked"], "load_s": round(time.time() - t, 2), "path": path}
+                    rec["ok"] = not (rec["console"] or rec["pageerror"] or rec["http"] or rec["failed"] or rec["overflow"] or imgs or sc["unlinked"])
                     report[f"{name}_{w}"] = rec
                     print(f"{name:20} {w:5} {'ok' if rec['ok'] else 'PROBLEM'} {rec['load_s']:.1f}s", flush=True)
                 pg.close()
             browser.close()
         srv.shutdown()
-    bad = {k: {x: v for x, v in r.items() if v and x not in ("ok", "load_s", "path")} for k, r in report.items() if not r["ok"]}
-    summary = {"pages": len(report), "problems": len(bad), "seconds": round(time.time() - t0)}
+    bad = {k: {x: v for x, v in r.items() if v and x not in ("ok", "load_s", "path", "scores")} for k, r in report.items() if not r["ok"]}
+    summary = {"pages": len(report), "problems": len(bad), "linked_scores": sum(r["scores"] for r in report.values()), "seconds": round(time.time() - t0)}
     (SHOTS / "report.json").write_text(json.dumps({"summary": summary, "pages": report}, indent=1))
     print(json.dumps(summary))
     for k, v in bad.items():

@@ -10,6 +10,7 @@ import { usePlayers } from "@/lib/players";
 import ShotChart, { Bins } from "./ShotChart";
 import TeamLogo from "./TeamLogo";
 import SeasonChip from "./ui/SeasonChip";
+import GameLink, { ScoreLink } from "./ui/GameLink";
 
 type Stats = { rows: Record<string, Record<string, number>> };
 type RankRows = { rows: { id: string; conf: string; w: number; l: number; cw: number; cl: number; off: number; def: number; margin: number }[] };
@@ -120,7 +121,8 @@ export default function TeamView({ id }: { id: string }) {
         <td>{pw == null ? "–" : pct(pw)}</td>
         <td>{signed(pmg, 1)}</td>
         <td className={act == null ? "" : act > 0 ? "text-accent2" : "text-[var(--bad)]"}>
-          {act == null ? "" : `${act > 0 ? "W" : "L"} ${home ? g.hs : g.as}-${home ? g.as : g.hs}`}
+          {act == null ? <GameLink id={g.id} season={season} className="text-xs text-muted">preview</GameLink>
+            : <ScoreLink id={g.id} season={season}>{act > 0 ? "W" : "L"} {home ? g.hs : g.as}-{home ? g.as : g.hs}</ScoreLink>}
         </td>
         <td className={act == null || pmg == null ? "" : act - pmg > 0 ? "text-accent2" : "text-[var(--bad)]"}>{act == null || pmg == null ? "" : signed(act - pmg, 1)}</td>
       </tr>

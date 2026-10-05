@@ -6,13 +6,14 @@ import { seasonRange } from "@/lib/format";
 import { fmt, pct, prettyDate, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
 import SeasonChip from "./ui/SeasonChip";
+import { ScoreLink } from "./ui/GameLink";
 
 type M = { n: number; log_loss: number; brier: number; accuracy: number; mae?: number; rmse?: number };
 type Rel = { bin: number; mean_pred: number; obs: number; n: number }[];
 type Bucket = { bucket: string; n: number; mean_conf: number; accuracy: number }[];
 type Live = { n_logged: number; n_games?: number; n_resolved: number; verified: boolean; problems?: string[]; days_before?: { days: number; n: number }[]; message?: string; first_logged?: string; last_logged?: string; metrics?: M; reliability?: Rel; buckets?: Bucket; ece?: number };
 type BT = { per_season: Record<string, M>; reliability_last3: Rel; ece_last3: number; buckets_last3: Bucket; last3_seasons: number[] };
-type Recent = { rows: { d: string; a: string; h: string; pm: number; p: number; m: number; n: boolean }[] };
+type Recent = { rows: { id?: string; s: number; d: string; a: string; h: string; pm: number; p: number; m: number; n: boolean }[] };
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -117,7 +118,7 @@ export default function PredictionsView() {
               return (
                 <tr key={i}><td className="l text-muted">{prettyDate(r.d)}</td>
                   <td className="l"><span className="inline-flex items-center gap-2"><TeamLogo team={map.get(r.a)} size={18} />{map.get(r.a)?.short}<span className="text-faint">@</span><TeamLogo team={map.get(r.h)} size={18} />{map.get(r.h)?.short}</span></td>
-                  <td>{pct(r.p)}</td><td>{signed(r.pm, 1)}</td><td>{signed(r.m, 0)}</td><td className={ok ? "text-accent2" : "text-[var(--bad)]"}>{ok ? "✓" : "✗"}</td></tr>
+                  <td>{pct(r.p)}</td><td>{signed(r.pm, 1)}</td><td>{r.id ? <ScoreLink id={r.id} season={r.s}>{signed(r.m, 0)}</ScoreLink> : signed(r.m, 0)}</td><td className={ok ? "text-accent2" : "text-[var(--bad)]"}>{ok ? "✓" : "✗"}</td></tr>
               );
             })}</tbody></table>
         </div>

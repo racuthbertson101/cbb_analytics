@@ -9,6 +9,7 @@ import { addDays, fmt, pct, prettyDate, seasonOf, signed } from "@/lib/util";
 import { shortConf } from "./RankingsView";
 import TeamLogo from "./TeamLogo";
 import SeasonChip from "./ui/SeasonChip";
+import GameLink, { ScoreLink } from "./ui/GameLink";
 
 type Pre = { teams: string[]; off: (number | null)[]; def: (number | null)[] };
 
@@ -44,7 +45,7 @@ function Watch({ w, wc }: { w: number; wc: (number | null)[] | null }) {
   );
 }
 
-function GameCard({ g, map }: { g: Game; map: Map<string, Team> }) {
+function GameCard({ g, map, season }: { g: Game; map: Map<string, Team>; season: number }) {
   const a = map.get(g.a), h = map.get(g.h);
   const nm = (t?: Team) => t?.short || t?.name || "TBD";
   const ph = g.p, pa = ph == null ? null : 1 - ph;
@@ -54,7 +55,8 @@ function GameCard({ g, map }: { g: Game; map: Map<string, Team> }) {
     <div className="card p-4">
       <div className="mb-3 flex items-center justify-between text-xs text-faint">
         <span>{g.n ? "Neutral site" : "Home: " + nm(h)}{g.note ? ` · ${g.note.replace("NCAA Men's Basketball Championship", "NCAA").slice(0, 40)}` : ""}</span>
-        <span className="flex gap-2">
+        <span className="flex items-center gap-2">
+          <GameLink id={g.id} season={season} className="text-muted">{done ? "Box score" : "Preview"} →</GameLink>
           {g.t !== "regular" && <span className="chip">{g.t.replace("_", " ")}</span>}
           {g.w != null && <Watch w={g.w} wc={g.wc} />}
         </span>
@@ -70,7 +72,7 @@ function GameCard({ g, map }: { g: Game; map: Map<string, Team> }) {
             </Link>
             <span className="num w-14 text-right text-xs text-muted" title="Predicted score">{x.sc != null ? `~${x.sc.toFixed(0)}` : ""}</span>
             <span className="num w-12 text-right text-sm text-accent2">{x.pr != null ? pct(x.pr) : ""}</span>
-            {done && <span className={`num w-10 text-right text-lg ${won ? "font-semibold" : "text-muted"}`}>{x.s}</span>}
+            {done && <ScoreLink id={g.id} season={season} className={`num w-10 text-right text-lg ${won ? "font-semibold" : "text-muted"}`}>{x.s}</ScoreLink>}
           </div>
         );
       })}
@@ -169,10 +171,10 @@ export default function TodayView() {
           <h2 className="mb-2 text-sm font-medium uppercase tracking-wider text-muted">Most watchable games</h2>
           <div className="grid grid-cols-4 gap-3">
             {top.map((g) => (
-              <div key={g.id} className="card flex items-center justify-between gap-2 px-3 py-2">
+              <GameLink key={g.id} id={g.id} season={season} className="card flex items-center justify-between gap-2 px-3 py-2 hover:no-underline">
                 <div className="flex items-center gap-1.5"><TeamLogo team={map.get(g.a)} size={26} /><span className="text-xs text-faint">@</span><TeamLogo team={map.get(g.h)} size={26} /></div>
                 <div className="truncate text-right text-[13px]"><div>{map.get(g.a)?.abbr} @ {map.get(g.h)?.abbr}</div><div className="text-xs text-muted"><span className="text-accent">{g.w?.toFixed(1)}</span> · {pct(g.p)} {map.get(g.h)?.abbr}</div></div>
-              </div>
+              </GameLink>
             ))}
           </div>
         </section>
@@ -185,7 +187,7 @@ export default function TodayView() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 2xl:grid-cols-4">
-          {list.map((g) => <GameCard key={g.id} g={g} map={map} />)}
+          {list.map((g) => <GameCard key={g.id} g={g} map={map} season={season} />)}
         </div>
       )}
     </div>

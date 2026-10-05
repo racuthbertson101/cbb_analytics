@@ -8,6 +8,7 @@ import { fmt, heat, prettyDate, seasonLabel, signed } from "@/lib/util";
 import TeamLogo from "./TeamLogo";
 import ShotChart, { Bins } from "./ShotChart";
 import SeasonChip from "./ui/SeasonChip";
+import { ScoreLink } from "./ui/GameLink";
 
 const IMP_TIP = "Experimental box-score rating (points per 100 possessions vs an average D-I player). Known bias: it overrates rebounders and shot blockers (centers average about +14, guards about -2), so compare players at the same position only.";
 
@@ -29,7 +30,7 @@ export default function PlayerView() {
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const pl = usePlayers(season || null);
   const p = useMemo(() => pl?.rows.find((r) => r.id === id) ?? null, [pl, id]);
-  const { data: L } = useJson<Logs>(p && meta && season > meta.current_season - 3 ? `playerlogs/${season}/${p.tid}.json` : null);
+  const { data: L } = useJson<Logs>(p && season >= 2017 ? `playerlogs/${season}/${p.tid}.json` : null);
   const { data: C } = useJson<Career>(id ? `playercareer/${Number(id) % 100}.json` : null);
   const hasShots = !!p && !!season && !!meta?.shot_seasons?.includes(season);
   const { data: SH } = useJson<{ players: Record<string, Bins> }>(hasShots ? `shots/${season}/${p?.tid}.json` : null);
@@ -102,10 +103,10 @@ export default function PlayerView() {
                 <tbody>{log.map((g) => (
                   <tr key={String(g[0])}><td className="l text-muted">{prettyDate(g[1] as string).replace(/, \d{4}$/, "")}</td>
                     <td className="l"><span className="inline-flex items-center gap-2"><span className="w-4 text-xs text-faint">{g[3]}</span><TeamLogo team={map.get(g[2] as string)} size={18} />{map.get(g[2] as string)?.short ?? "Non-D-I"}</span></td>
-                    <td className={(g[4] as number) > 0 ? "text-accent2" : "text-[var(--bad)]"}>{(g[4] as number) > 0 ? "W" : "L"} {signed(g[4] as number, 0)}</td>
+                    <td className={(g[4] as number) > 0 ? "text-accent2" : "text-[var(--bad)]"}><ScoreLink id={String(g[0])} season={season}>{(g[4] as number) > 0 ? "W" : "L"} {g[22] != null ? `${g[22]}-${g[23]}` : signed(g[4] as number, 0)}</ScoreLink></td>
                     <td>{g[5]}</td><td className="font-medium">{g[6]}</td><td>{g[7]}</td><td>{g[8]}</td><td>{g[9]}</td><td>{g[10]}</td><td>{g[11]}</td>
                     <td>{g[13]}-{g[14]}</td><td>{g[15]}-{g[16]}</td><td>{g[17]}-{g[18]}</td></tr>))}</tbody></table>
-                : <p className="p-6 text-center text-muted">{season > (meta?.current_season ?? 0) - 3 ? "Loading game log…" : "Game logs are kept for the three most recent seasons."}</p>}
+                : <p className="p-6 text-center text-muted">{season >= 2017 ? "Loading game log…" : "Game logs are kept from 2016-17 on."}</p>}
             </div>
           </div>
         </>
