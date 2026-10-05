@@ -37,6 +37,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function MethodologyView() {
   const meta = useMeta();
   const wt = useJson<{ weights: Record<string, number>; stakes_weights: Record<string, number> }>("params/watchability.json").data;
+  const mx = useJson<{ registered: string; adoption_rule: { pooled_log_loss_improvement_at_least: number; seasons_improved_at_least: number; of_seasons: number };
+    features: Record<string, string>; results: { n_games: number; per_feature: Record<string, { improvement: number; seasons_improved: number; passes: boolean }> } | null;
+    decision: { adopted: string[]; status: string } | null }>("params/matchup_eval.json").data;
   const ig = useJson<{ test_seasons: number[]; pooled: { n_states: number; log_loss: number }; by_season: Record<string, { log_loss: number; log_loss_pregame_only: number; log_loss_margin_only: number }>;
     calibration_by_time_left: { bucket: string; n: number; mean_pred: number; observed: number; ece: number; worst_bin_gap: number }[] }>("params/ingame.json").data;
   const bt = useJson<BT>("params/backtest.json").data;
@@ -150,6 +153,16 @@ export default function MethodologyView() {
               <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
           </tbody></table>
           <p>Learned production weights: {Object.entries(cs.production.weights).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ")}. Honest note: the margin-aware Elo is close to the ridge model on margin error and the consensus beats both, so the ridge model is the flagship but not dominant.</p>
+        </>)}
+      </Section>
+
+      <Section title="Style matchups (tested, not used in predictions)">
+        <p>Do style matchups (pace, three-point volume, offensive rebounding, turnovers, free throws, rest) predict results beyond the ratings? The test was pre-registered on {mx?.registered ?? "…"}, before any code ran. Every input is season-to-date from earlier games, and a ridge regression on the walk-forward margin residual is fit on earlier seasons only. A feature would enter the prediction only if pooled log loss improved by at least {mx ? mx.adoption_rule.pooled_log_loss_improvement_at_least : "…"} and it improved in at least {mx?.adoption_rule.seasons_improved_at_least ?? "…"} of {mx?.adoption_rule.of_seasons ?? "…"} test seasons.</p>
+        {mx?.results && (<>
+          <table className="dense prose"><thead><tr><th className="l">Feature</th><th>Log loss change</th><th>Seasons improved</th><th className="l">Result</th></tr></thead>
+            <tbody>{Object.entries(mx.results.per_feature).map(([k, r]) => (
+              <tr key={k}><td className="l">{k === "joint" ? "all six together" : k.replace("_", " ")}</td><td>{r.improvement > 0 ? "+" : ""}{r.improvement.toFixed(5)}</td><td>{r.seasons_improved} / {mx.adoption_rule.of_seasons}</td><td className="l">{r.passes ? "adopted" : "context only"}</td></tr>))}</tbody></table>
+          <p>Result: {mx.decision?.adopted.length ? `adopted: ${mx.decision.adopted.join(", ")}` : "none passed, so every style comparison on the Compare page is labeled context only"} ({mx.results.n_games.toLocaleString()} games; positive = better than the ratings alone).</p>
         </>)}
       </Section>
 

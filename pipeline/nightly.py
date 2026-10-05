@@ -247,6 +247,10 @@ def main(argv=None):
     conferences.tiebreak_index()
     conferences.conference_stats(list(range(2010, cur + 1)))
     systems.main()
+    from pipeline.export import compare_extras, profiles
+
+    profiles.export_profiles()  # after systems (rating ranks) and shots (shot mix)
+    compare_extras.export_compare_extras(cur)
     accuracy.live_summary()
     accuracy.backtest_summary()
 

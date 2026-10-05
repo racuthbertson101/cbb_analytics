@@ -263,7 +263,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         idx["players"] = [[r_[c_.index("id")], r_[c_.index("name")], r_[c_.index("tid")], r_[c_.index("pos")]] for r_ in rows_]
     write("search.json", idx)
     # methodology inputs
-    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json", "rapm_compare.json", "ingame.json"):
+    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json", "rapm_compare.json", "ingame.json", "matchup_eval.json"):
         src = ROOT / "pipeline" / "params" / name
         if src.exists():
             d = json.loads(src.read_text())
