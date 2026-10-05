@@ -1,4 +1,4 @@
-"""Export player shards (contract v1 addendum): players/<season>.json, playerlogs/<season>/<team>.json, playercareer/<bucket>.json."""
+"""Export player shards (contract v1 addendum): players/<season>.json, playercareer/<bucket>.json. Game logs: pipeline/export/games.py."""
 from __future__ import annotations
 
 import numpy as np
@@ -14,7 +14,6 @@ COLS = ["id", "name", "tid", "pos", "gp", "gs", "mpg", "share", "ppg", "rpg", "a
 PCT_STATS = {"usg": True, "ts": True, "ast_pct": True, "orb_pct": True, "drb_pct": True, "stl_pct": True, "blk_pct": True,
              "tov_pct": False, "ftr": True, "efg": True, "imp": True, "imp_o": True, "imp_d": True, "pts40": True}
 REF_MIN = 300  # DEFINITION: percentiles are ranks among D-I players with at least this many minutes that season
-LOG_SEASONS = 3  # game logs exported for the most recent seasons only (size budget)
 MIN_EXPORT = 50
 
 
@@ -60,21 +59,6 @@ def export_players(seasons=None, last_season=CURRENT_SEASON):
             career.setdefault(int(r.athlete_id) % 100, {}).setdefault(r.athlete_id, []).append(
                 [y, r.team_id, int(r.gp), round(r.mpg, 1), round(r.ppg, 1), round(r.rpg, 1), round(r.apg, 1),
                  None if pd.isna(r.ts) else round(r.ts, 3), None if pd.isna(r.usg) else round(r.usg, 1), round(r.imp, 2)])
-        # game logs for recent seasons
-        if y > last_season - LOG_SEASONS:
-            pg = pd.read_parquet(table_path("player_games", y))
-            g = pd.read_parquet(table_path("games", y))[["game_id", "game_date", "home_id", "away_id", "neutral_site", "home_score", "away_score"]]
-            pg = pg[~pg.did_not_play & (pg.minutes > 0) & pg.team_id.isin(d1)].drop(columns=["game_date"]).merge(g, on="game_id")
-            pg["opp"] = np.where(pg.team_id == pg.home_id, pg.away_id, pg.home_id)
-            pg["site"] = np.where(pg.neutral_site, "N", np.where(pg.team_id == pg.home_id, "H", "A"))
-            pg["res"] = np.where(pg.team_id == pg.home_id, pg.home_score - pg.away_score, pg.away_score - pg.home_score)
-            for tid, grp in pg.groupby("team_id"):
-                logs = {}
-                for r in grp.sort_values("game_date").itertuples():
-                    logs.setdefault(r.athlete_id, []).append([r.game_id, str(r.game_date.date()), r.opp, r.site, int(r.res), int(r.minutes), int(r.points),
-                                                              int(r.trb), int(r.ast), int(r.stl), int(r.blk), int(r.tov), int(r.pf), int(r.fgm), int(r.fga),
-                                                              int(r.tpm), int(r.tpa), int(r.ftm), int(r.fta)])
-                write(f"playerlogs/{y}/{tid}.json", {"season": y, "team": tid, "cols": ["game", "d", "opp", "site", "margin", "min", "pts", "reb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "tpm", "tpa", "ftm", "fta"], "logs": logs})
         print("players", y, len(rows), flush=True)
     for b, d in career.items():
         write(f"playercareer/{b}.json", d)

@@ -234,6 +234,9 @@ def main(argv=None):
     upcoming = season if cur != season else None
     contract.export_all(current=cur, upcoming=upcoming)
     players.export_players()
+    from pipeline.export import games as game_exports
+
+    game_exports.export_logs()
     conferences.tiebreak_index()
     conferences.conference_stats(list(range(2010, cur + 1)))
     systems.main()
