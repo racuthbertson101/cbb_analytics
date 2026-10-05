@@ -22,7 +22,7 @@ type TS = { rows: Record<string, Record<string, number>> };
 type PlayersShard = { cols: string[]; rows: Cell[][] };
 type Side = Record<string, number>;
 
-const PLOG_FIRST = 2017;
+const DEFAULT_PLOG_FIRST = 2017; // site_size.py may raise it (meta.limits)
 const TYPE_LABEL: Record<string, string> = { regular: "Regular season", conf_tourney: "Conference tournament", ncaa: "NCAA Tournament", nit: "NIT", other_post: "Postseason", exhibition: "Exhibition" };
 const obj = (cols: string[], row: Cell[]) => Object.fromEntries(cols.map((c, i) => [c, row[i]]));
 const color = (t?: Team) => teamColor(t);
@@ -128,7 +128,9 @@ function seasonAvg(log: TLog | null | undefined, ftaCoef: number) {
 }
 
 function Completed({ g, season, map, games }: { g: Game; season: number; map: Map<string, Team>; games: Game[] }) {
-  const aD1 = isD1(map, g.a, season), hD1 = isD1(map, g.h, season);
+  const meta = useMeta();
+  const PLOG_FIRST = meta?.limits?.playerlog_first ?? DEFAULT_PLOG_FIRST, TLOG_FIRST = meta?.limits?.teamlog_first ?? 2010;
+  const aD1 = isD1(map, g.a, season) && season >= TLOG_FIRST, hD1 = isD1(map, g.h, season) && season >= TLOG_FIRST;
   const { data: TA } = useJson<TLog>(aD1 ? `teamlogs/${season}/${g.a}.json` : null);
   const { data: TH } = useJson<TLog>(hD1 ? `teamlogs/${season}/${g.h}.json` : null);
   const { data: PA } = useJson<PLog>(aD1 && season >= PLOG_FIRST ? `playerlogs/${season}/${g.a}.json` : null);
@@ -154,13 +156,13 @@ function Completed({ g, season, map, games }: { g: Game; season: number; map: Ma
       {PP && g.pm != null && <PredictionStrip g={g} PP={PP} map={map} logged={LOG?.games[g.id]} hasLog={!!LIVE?.logged_seasons?.length} />}
       <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         {[{ t: g.a, l: la, s: away, d1: aD1, name: g.an }, { t: g.h, l: lh, s: home, d1: hD1, name: g.hn }].map((x) => (
-          <BoxScore key={x.t} team={map.get(x.t)} fallbackName={x.name} lines={x.l} totals={x.s} season={season} d1={x.d1} />
+          <BoxScore key={x.t} team={map.get(x.t)} fallbackName={x.name} lines={x.l} totals={x.s} season={season} d1={x.d1} plogFirst={PLOG_FIRST} />
         ))}
       </div>
       {home && away && (
         <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
           <TeamStats a={map.get(g.a)} h={map.get(g.h)} an={g.an} hn={g.hn} away={away} home={home} avgA={seasonAvg(TA, ftaCoef)} avgH={seasonAvg(TH, ftaCoef)} ftaCoef={ftaCoef} />
-          <ExpectedVsActual rows={[...(la ?? []).map((r) => ({ ...r, tid: g.a })), ...(lh ?? []).map((r) => ({ ...r, tid: g.h }))]} map={map} />
+          <ExpectedVsActual plogFirst={PLOG_FIRST} rows={[...(la ?? []).map((r) => ({ ...r, tid: g.a })), ...(lh ?? []).map((r) => ({ ...r, tid: g.h }))]} map={map} />
         </div>
       )}
       <MoreGames g={g} season={season} games={games} map={map} />
@@ -234,7 +236,7 @@ const BOX_COLS: [string, string, (r: Line) => string | number][] = [
   ["AST", "ast", (r) => r.ast], ["STL", "stl", (r) => r.stl], ["BLK", "blk", (r) => r.blk], ["TO", "tov", (r) => r.tov], ["PF", "pf", (r) => r.pf],
 ];
 
-function BoxScore({ team, fallbackName, lines, totals, season, d1 }: { team?: Team; fallbackName?: string | null; lines: Line[] | null; totals: Side | null; season: number; d1: boolean }) {
+function BoxScore({ team, fallbackName, lines, totals, season, d1, plogFirst }: { team?: Team; fallbackName?: string | null; lines: Line[] | null; totals: Side | null; season: number; d1: boolean; plogFirst: number }) {
   const [sort, setSort] = useState<string | null>(null);
   const rows = useMemo(() => {
     if (!lines) return [];
@@ -246,7 +248,7 @@ function BoxScore({ team, fallbackName, lines, totals, season, d1 }: { team?: Te
     <div className="card overflow-hidden">
       <h2 className={`${h2} flex items-center gap-2 px-4 pt-4`}><TeamLogo team={team} size={20} />{name}</h2>
       {!d1 ? <p className="px-4 pb-4 text-sm text-muted">Box scores are kept for Division I teams only.</p>
-        : season < PLOG_FIRST ? <p className="px-4 pb-4 text-sm text-muted">Player box scores are kept from {seasonLabel(PLOG_FIRST)} on; team totals are below.</p>
+        : season < plogFirst ? <p className="px-4 pb-4 text-sm text-muted">Player box scores are kept from {seasonLabel(plogFirst)} on; team totals are below.</p>
         : !lines ? <div className="skeleton m-4 h-40" />
         : (
           <div className="overflow-x-auto p-2">
@@ -299,14 +301,14 @@ function TeamStats({ a, h, an, hn, away, home, avgA, avgH, ftaCoef }: { a?: Team
   );
 }
 
-function ExpectedVsActual({ rows, map }: { rows: Line[]; map: Map<string, Team> }) {
+function ExpectedVsActual({ rows, map, plogFirst }: { rows: Line[]; map: Map<string, Team>; plogFirst: number }) {
   const xs = rows.filter((r) => r.min >= 10 && r.xpts != null).sort((a, b) => (b.pts - b.xpts) - (a.pts - a.xpts));
   const max = Math.max(10, ...xs.flatMap((r) => [r.pts, r.xpts]));
   const tip = "Expected = the player's season-to-date points (or rebounds) per minute from games BEFORE this one, times the minutes he played in it. Players with fewer than 30 earlier minutes have no expectation.";
   return (
     <div className={card}>
       <h2 className={h2} title={tip}>Expected vs actual points <span className="cursor-help normal-case">ⓘ</span></h2>
-      {!xs.length ? <p className="text-sm text-muted">No pre-game expectations: a player needs at least 30 minutes in earlier games this season (player logs start in {seasonLabel(PLOG_FIRST)}).</p> : (
+      {!xs.length ? <p className="text-sm text-muted">No pre-game expectations: a player needs at least 30 minutes in earlier games this season (player logs start in {seasonLabel(plogFirst)}).</p> : (
         <div className="space-y-1">
           {xs.map((r) => {
             const good = r.pts >= r.xpts;

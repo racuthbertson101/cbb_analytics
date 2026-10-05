@@ -250,7 +250,14 @@ def main(argv=None):
     contract.write("status.json", {"data_through": status["data_through"], "season": cur, "live": live, "today": str(today),
                                    "updated": status["updated"], "logged": status.get("logged"), "source": "nightly"})
 
-    # 8. static site build
+    # 8. size budget (drop order in pipeline/tools/site_size.py), then the static site build
+    from pipeline.tools import site_size
+
+    size = site_size.enforce()
+    status["site_mb"] = size["final_mb"]
+    log(f"site data {size['total_mb']} MB, dropped {[d['rule'] for d in size['dropped']]}")
+    if not size["ok"]:
+        raise SystemExit(f"site data {size['final_mb']} MB is over the {size['limit_mb']} MB budget after every drop")
     if not a.no_build:
         env = dict(os.environ, NEXT_PUBLIC_BASE_PATH=a.base_path)
         subprocess.run("npx next build", cwd=ROOT / "web", shell=True, check=True, env=env)

@@ -30,7 +30,7 @@ export default function PlayerView() {
   const season = Number(sp.get("season")) || meta?.current_season || 0;
   const pl = usePlayers(season || null);
   const p = useMemo(() => pl?.rows.find((r) => r.id === id) ?? null, [pl, id]);
-  const { data: L } = useJson<Logs>(p && season >= 2017 ? `playerlogs/${season}/${p.tid}.json` : null);
+  const { data: L } = useJson<Logs>(p && meta && season >= (meta.limits?.playerlog_first ?? 2017) ? `playerlogs/${season}/${p.tid}.json` : null);
   const { data: C } = useJson<Career>(id ? `playercareer/${Number(id) % 100}.json` : null);
   const hasShots = !!p && !!season && !!meta?.shot_seasons?.includes(season);
   const { data: SH } = useJson<{ players: Record<string, Bins> }>(hasShots ? `shots/${season}/${p?.tid}.json` : null);
@@ -106,7 +106,7 @@ export default function PlayerView() {
                     <td className={(g[4] as number) > 0 ? "text-accent2" : "text-[var(--bad)]"}><ScoreLink id={String(g[0])} season={season}>{(g[4] as number) > 0 ? "W" : "L"} {g[22] != null ? `${g[22]}-${g[23]}` : signed(g[4] as number, 0)}</ScoreLink></td>
                     <td>{g[5]}</td><td className="font-medium">{g[6]}</td><td>{g[7]}</td><td>{g[8]}</td><td>{g[9]}</td><td>{g[10]}</td><td>{g[11]}</td>
                     <td>{g[13]}-{g[14]}</td><td>{g[15]}-{g[16]}</td><td>{g[17]}-{g[18]}</td></tr>))}</tbody></table>
-                : <p className="p-6 text-center text-muted">{season >= 2017 ? "Loading game log…" : "Game logs are kept from 2016-17 on."}</p>}
+                : <p className="p-6 text-center text-muted">{season >= (meta?.limits?.playerlog_first ?? 2017) ? "Loading game log…" : `Game logs are kept from ${seasonLabel(meta?.limits?.playerlog_first ?? 2017)} on.`}</p>}
             </div>
           </div>
         </>
