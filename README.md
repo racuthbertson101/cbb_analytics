@@ -6,9 +6,9 @@ Read `SPEC.md` for the original brief, `PROGRESS.md` for build status, `DECISION
 
 ## What you get
 
-- **Today**: every game on a date with predicted score, win probability (80% interval), a 1-10 watchability score with a visible breakdown, and result-versus-expectation once played. `?asof=YYYY-MM-DD` replays any past date.
+- **Today**: every game on a date with predicted score, win probability, a 1-10 watchability score with a visible breakdown, and result-versus-expectation once played. `?asof=YYYY-MM-DD` replays any past date.
 - **Rankings**: adjusted efficiency, consensus, margin-aware Elo, Bradley-Terry, player-driven and mean-rank systems, plus a résumé view (wins above bubble, strength of record, quadrant records, SOS). Season and as-of-date selectors.
-- **Team / Player / Game-level pages**, **Conferences** (strength, non-conference results, projected standings from 20,000 simulations with each conference's own tiebreaker rules), **Accuracy** (append-only prediction log plus walk-forward backtest), **Compare** (any two teams and a site), **Methodology** (every fitted parameter and validation result, generated from `pipeline/params/`), **Search** (Ctrl/Cmd+K) and a **Tournament** placeholder.
+- **Team / Player pages**, **Conferences** (strength, non-conference results, projected standings from 20,000 simulations with each conference's own tiebreaker rules), **Accuracy** (append-only prediction log committed to git, scored on the last pre-tip prediction, plus walk-forward backtest), **Compare** (any two teams and a site), **Methodology** (every fitted parameter and validation result, generated from `pipeline/params/`), **Search** (Ctrl/Cmd+K) and a **Tournament** placeholder.
 
 ## Quick start (local)
 
@@ -23,12 +23,15 @@ cd web && npx next dev     # or open web/out with any static server
 make test                  # unit tests (leakage, tiebreakers, warehouse validation, ...)
 ```
 
-Replay the whole nightly path as if it were a past date (the season is not running, so this is how you see an "in season" night):
+Rehearse the whole nightly path as if it were another date, on scratch copies in `data/rehearsal/` (the real warehouse, `predictions/` and the release are never touched):
 
 ```bash
-make replay DATE=2026-02-15   # ingests from ESPN with results on/after DATE masked, refits, predicts 7 days, simulates, exports
-make site                     # restores the normal (last completed season) site afterwards
+uv run python -m pipeline.nightly --today 2026-02-15 --rehearsal --rehearsal-reset --force   # fresh copy truncated to that morning
+uv run python -m pipeline.nightly --today 2026-02-16 --rehearsal --force                     # next night continues from it
+make site                     # restores the normal site afterwards (nightly --force --no-ingest --no-log)
 ```
+
+The season-opener checklist, with drill results, is `docs/SEASON_OPENER.md`.
 
 ## Publishing to GitHub Pages (one-time setup)
 
@@ -49,9 +52,22 @@ The site will live at `https://<your-user>.github.io/cbb_analytics/` (`basePath`
 
 | Workflow | When | What |
 |---|---|---|
-| `nightly.yml` | 07:30 UTC daily + manual | download warehouse/artifacts, ingest new games from ESPN (rechecking 3 days), validate, refit the live season with stored parameters, predict the next 7 days, append to the prediction log, simulate conferences, export JSON, build, deploy, upload updated data. Full run Nov 1 - Apr 15, light weekly run otherwise. Any failure stops before deploy, so the previous site stays up. |
+| `nightly.yml` | 07:30 UTC daily + manual | see the job graph below. Full run Nov 1 - Apr 15, light weekly run (Mondays) otherwise; other days end green after the guard step. Manual dispatch inputs: `today`, `nsim`, `rehearsal`. |
 | `refit.yml` | manual | re-estimate every hyperparameter and artifact (`make ratings`), commit refreshed `pipeline/params/`. Run once after each season. |
-| `deploy.yml` | manual | republish from stored data without ingesting. |
+| `deploy.yml` | manual | republish from stored data: `pipeline.nightly --force --no-ingest --no-log` (same export path as the nightly run, no hardcoded dates). |
+
+`nightly.yml` job graph:
+
+```
+build ─┬─> deploy   GitHub Pages (skipped in rehearsal)
+       └─> sync     release upload of changed files (manifest last) + prune, then commit predictions/ (skipped in rehearsal)
+```
+
+- **build**: guard (`--check`), download the release by its manifest, ingest from ESPN (schema checked), validate (null ceilings, player sums), Monday canary vs hoopR, refit the live season, predict the next 7 days, append to the prediction log, simulate conferences, export JSON, build the site. Any failure stops here, so the previous site stays up and nothing is uploaded or committed.
+- **deploy** and **sync** fail independently: a failed release upload never blocks the site, and a failed deploy never loses the log.
+- **Prediction log**: `predictions/log/YYYY/MM-DD.csv` plus `predictions/HEAD.json`, hash-chained and committed to git by sync (`pipeline/predictions/log.py`).
+- **Release** (`warehouse` tag): versioned assets plus `manifest.json`, uploaded last (`pipeline/release.py`).
+- **Rehearsal** (`rehearsal: true`): build runs on scratch copies and uploads the site and the scratch log as a workflow artifact; deploy and sync are skipped.
 
 ## Repository map
 

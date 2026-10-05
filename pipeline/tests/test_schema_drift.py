@@ -58,3 +58,12 @@ def test_canary_flags_disagreement():
     ref.loc[:9, "fga"] = 0.0  # 10% disagree
     assert "disagrees" in canary.verdict(canary.compare(ours, ref))
     assert canary.verdict(canary.compare(ours.head(10), ref.head(10))) is None  # too little overlap to judge
+
+
+def test_player_without_espn_id_is_skipped():
+    """Real case (game 401826937): a DNP player listed with no athlete id must not crash the night."""
+    d = copy.deepcopy(FIX)
+    grp = d["boxscore"]["players"][0]["statistics"][0]
+    grp["athletes"].append({"athlete": {"shortName": "D. McDonald"}, "starter": False, "didNotPlay": True, "stats": []})
+    t, p = espn.parse_summary(d, "401856532", ROW)
+    assert len(t) == 2 and all(r["athlete_id"] for r in p)

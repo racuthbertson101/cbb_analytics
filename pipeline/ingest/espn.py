@@ -164,7 +164,9 @@ def parse_summary(d: dict, game_id: str, game_row: dict):
                 fgm, fga = pair("fieldGoalsMade-fieldGoalsAttempted")
                 tpm, tpa = pair("threePointFieldGoalsMade-threePointFieldGoalsAttempted")
                 ftm, fta = pair("freeThrowsMade-freeThrowsAttempted")
-                ath = a["athlete"]
+                ath = a.get("athlete") or {}
+                if "id" not in ath:  # e.g. a DNP walk-on on a non-D-I roster with no ESPN id (game 401826937): cannot be keyed
+                    continue
                 prows.append({"game_id": game_id, "team_id": tid, "athlete_id": str(ath["id"]), "name": ath.get("displayName"), "minutes": num("minutes"),
                               "points": num("points"), "fgm": fgm, "fga": fga, "tpm": tpm, "tpa": tpa, "ftm": ftm, "fta": fta, "orb": num("offensiveRebounds"),
                               "drb": num("defensiveRebounds"), "trb": num("rebounds"), "ast": num("assists"), "stl": num("steals"), "blk": num("blocks"),

@@ -38,7 +38,18 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 1.13 pipeline/tools/screenshots.py (20 routes x 1440/1920; 40/40 loads clean, 97 s). Verified 2026-10-05: pytest 226 passed; warehouse 2027 = 365 D-I in 32 conferences; full refit (MAE 8.8898, log loss 0.5263, ECE 0.008, NCAA slice 935 games); preseason rankings 365 teams; Nov 2 2026: 50/50 games predicted (Miami-Florida, UCLA-Arizona included); next build 413 pages, 128 MB; screenshots of Today (Nov 2), preseason Rankings, Team, Player, Compare and Methodology reviewed.
   - [x] Extra (found in verification): conference pages for every league in the data (Pac-12 pages 404'd); preseason table uses the upcoming season's conferences.
   - [x] Rebuilt warehouse, refit artifacts and shot bins uploaded to the `warehouse` release.
-- [ ] Phase 2: Pipeline reliability and dress rehearsal (before Nov 2, 2026) <- NEXT (paste the Phase 2 prompt from IMPROVEMENT_PLAN.md section 6)
+- [x] Phase 2: Pipeline reliability and dress rehearsal (2026-10-05; GitHub dispatch items are for the owner, see docs/SEASON_OPENER.md sections 4-8)
+  - [x] 2.1 Prediction log in git (`predictions/log/YYYY/MM-DD.csv` + `HEAD.json`); verify fails on missing/edited/extra rows
+  - [x] 2.2 Log every night; score the last prediction before tip-off; days_before on the Accuracy page
+  - [x] 2.3 Manifest-based, change-only release sync with versioned assets, manifest last, prune after 7 days
+  - [x] 2.4 nightly.yml jobs: build -> deploy, build -> sync (independent); job graph in README
+  - [x] 2.5 deploy.yml and `make site` = `pipeline.nightly --force --no-ingest --no-log`; no hardcoded sim dates
+  - [x] 2.6 Schema drift: required ESPN keys, null ceilings, 99% live player-sum, Monday canary vs hoopR
+  - [x] 2.7 Rehearsal mode (`--rehearsal`, workflow input), scratch copies in data/rehearsal
+  - [x] 2.8 uv cache in all workflows
+  - [x] 2.9 docs/SEASON_OPENER.md; all local items run and ticked. The rehearsals found and fixed three would-be opening-week failures: zero-results morning crash (player tables), the rankings export on the same morning, and an ESPN player with no id. pytest 242 passed; actionlint clean; screenshots 40/40 clean.
+- [ ] Owner, before Nov 2: GitHub rehearsal dispatches (Oct 20, Oct 27) and the Nov 1 checks in docs/SEASON_OPENER.md
+- [ ] Phase 3: Game page <- NEXT
 - [ ] Phase 3: Game page
 - [ ] Phase 4: Compare page
 - [ ] Phase 5: RAPM impact, star power, estimate interval
