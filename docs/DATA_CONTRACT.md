@@ -20,7 +20,10 @@ Additional files (v1 addenda):
 |---|---|
 | `systems/<season>.json` | weekly snapshots (dates[], teams[]) of `adj`, `elo`, `bt`, `cons`, `pd` (season end only), `mrank` ratings in points per game, and résumé metrics `wab`, `sor`, `sos`, `ncsos`, `q1w..q4l` |
 | `players/<season>.json` | `{cols, rows}` columnar player season lines (rates, impact `imp/imp_o/imp_d`, percentile columns `pc_*`, height/class from rosters when available) for players with 50+ minutes |
-| `playerlogs/<season>/<team>.json` | game logs for the 3 most recent seasons, `{logs: {athlete_id: [[game, date, opp, site, margin, min, pts, ...]]}}` |
+| `playerlogs/<season>/<team>.json` | v2, 2016-17 on (D-I teams): `{v, season, team, cols, names: {athlete_id: name}, logs: {athlete_id: [[...]]}}`. cols: game, d, opp, site (H/A/N), margin, min, pts, reb, ast, stl, blk, tov, pf, fgm, fga, tpm, tpa, ftm, fta, st (starter 0/1), orb, drb, ts (team score), os (opponent score), xpts, xreb (pre-game expectation = season-to-date per-minute rate from EARLIER dates x minutes played; null below 30 earlier minutes) |
+| `teamlogs/<season>/<team>.json` | v2, 2009-10 on (D-I teams): `{v, season, team, cols, rows}`, one row per game. cols: game, d, opp, site, t (game type), pts, opp_pts, fgm, fga, tpm, tpa, ftm, fta, orb, drb, ast, stl, blk, tov, pf, pip (points in paint), fbp (fast-break points), top (points off turnovers), ll (largest lead), then the same box with an `o_` prefix for the opponent |
+| `accuracy/logged/<season>.json` | the scored live prediction per game: `{cols: [made_at, hash, p, pm, days_before], games: {game_id: [...]}}`; `accuracy/live.json` lists `logged_seasons` |
+| `status.json` | freshness for the footer: data_through, season, updated, source (export or nightly) |
 | `playercareer/<id mod 100>.json` | season lines per player id (career tables) |
 | `shots/<season>/<team>.json`, `league.json` | binned shot locations (3 ft cells) per team and player (latest season only) |
 | `conferences/<season>.json` | conference strength and non-conference results per season |
@@ -31,6 +34,6 @@ Additional files (v1 addenda):
 | `search.json` | teams and top current-season players for the Ctrl+K palette |
 | `ratings/<season>_preseason.json` | preseason ratings for the upcoming season (`mu`, `hca`, `off`, `def`, `tempo`) |
 
-Games rows also carry `w` (watchability 1-10) and `wc` (five component percentiles). Meta carries `upcoming_season` / `upcoming_first_date` (null in season).
+Games rows also carry `w` (watchability 1-10), `wc` (five component percentiles), `dt` (tip-off, UTC ISO; ESPN uses midnight Eastern for "time TBA"), `v` (venue), `att` (attendance), `tv` (broadcast) and, for teams that are not D-I that season, `an`/`hn` (display name). Meta also carries `shot_seasons` and, when the size budget dropped shards, `limits` (`playerlog_first`, `teamlog_first`, ...). Meta carries `upcoming_season` / `upcoming_first_date` (null in season).
 
-Sharding: per season for games/ratings/teamstats (0.3-3 MB each). Player and game-detail shards are added in later phases (`players/<season>/...`, `box/<season>/<game>.json`). Size budget: whole site < 800 MB.
+Sharding: per season for games/ratings/teamstats (0.3-3 MB each); per season and team for team and player logs (the Game page reads both teams' logs; there are no per-game box files). Size budget: 400 MB target, 800 MB cap, enforced by `pipeline/tools/site_size.py` (drop order in its docstring).

@@ -49,7 +49,15 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 2.8 uv cache in all workflows
   - [x] 2.9 docs/SEASON_OPENER.md; all local items run and ticked. The rehearsals found and fixed three would-be opening-week failures: zero-results morning crash (player tables), the rankings export on the same morning, and an ESPN player with no id. pytest 242 passed; actionlint clean; screenshots 40/40 clean.
 - [ ] Owner, before Nov 2: GitHub rehearsal dispatches (Oct 20, Oct 27) and the Nov 1 checks in docs/SEASON_OPENER.md
-- [ ] Phase 3: Game page <- NEXT
+- [ ] Phase 3: Game page
+  - [x] 3a.1 web/lib/format.ts formatters, ui/GameLink, ScoreLink, ContextTag, MatchupBar, SeasonChip; games export gains dt, v, att, tv, an/hn; warehouse games.tv
+  - [x] 3a.2 teamlogs 2010+ (32 MB) and playerlogs 2017+ (104 MB, with starters, ORB/DRB, scores, names, expectations)
+  - [x] 3a.3 /game/?id=&season=: completed and upcoming layouts (screenshots: 2026 final, 2015 final, non-D-I game, two upcoming 2026-27 games)
+  - [x] 3a.4 Expected vs actual uses earlier dates only (3 leakage tests)
+  - [x] 3a.5 Every score links to /game/ (screenshot tool check: 504 linked scores, 0 unlinked)
+  - [x] 3a.6 pipeline/tools/site_size.py (228.8 MB of 400 MB; drop order; run by nightly before the build)
+  - Verified 2026-10-05: pytest 248 passed, next build ok, 50/50 screenshot loads clean
+  - [ ] 3b Play-by-play, in-game win probability, gamedetail shards, WP chart <- NEXT
 - [ ] Phase 3: Game page
 - [ ] Phase 4: Compare page
 - [ ] Phase 5: RAPM impact, star power, estimate interval
