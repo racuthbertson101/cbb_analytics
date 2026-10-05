@@ -67,6 +67,11 @@ def routes() -> dict[str, str]:
     r["game_final"] = f"/game/?id={[x for x in gc if x['t'] == 'ncaa'][-1]['id']}&season={cur}"
     r["game_2015"] = f"/game/?id={[x for x in games(2015) if x['t'] == 'ncaa'][-1]['id']}&season=2015"
     r["game_non_d1"] = f"/game/?id={next(x for x in gc if x['ok'] and not x['d1'])['id']}&season={cur}"
+    gd = OUT / "data" / "gamedetail" / str(cur)
+    if gd.exists():  # an overtime game with a win-probability chart
+        ot = next((p.stem for p in sorted(gd.glob("4*.json")) if json.loads(p.read_text())["wp"][-1][0] > 2400), None)
+        if ot:
+            r["game_overtime"] = f"/game/?id={ot}&season={cur}"
     nxt = games(up) if up else [x for x in gc if not x["ok"]]
     for i, x in enumerate(sorted([x for x in nxt if x.get("w") is not None and not x["ok"]], key=lambda x: -x["w"])[:2]):
         r[f"game_upcoming_{i + 1}"] = f"/game/?id={x['id']}&season={up or cur}"

@@ -37,6 +37,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function MethodologyView() {
   const meta = useMeta();
   const wt = useJson<{ weights: Record<string, number>; stakes_weights: Record<string, number> }>("params/watchability.json").data;
+  const ig = useJson<{ test_seasons: number[]; pooled: { n_states: number; log_loss: number }; by_season: Record<string, { log_loss: number; log_loss_pregame_only: number; log_loss_margin_only: number }>;
+    calibration_by_time_left: { bucket: string; n: number; mean_pred: number; observed: number; ece: number; worst_bin_gap: number }[] }>("params/ingame.json").data;
   const bt = useJson<BT>("params/backtest.json").data;
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
@@ -148,6 +150,17 @@ export default function MethodologyView() {
               <tr key={k}><td className="l">{l}</td><td>{cs[k].mae.toFixed(3)}</td><td>{cs[k].rmse.toFixed(3)}</td><td>{cs[k].log_loss ? cs[k].log_loss.toFixed(4) : "–"}</td></tr>))}
           </tbody></table>
           <p>Learned production weights: {Object.entries(cs.production.weights).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ")}. Honest note: the margin-aware Elo is close to the ridge model on margin error and the consensus beats both, so the ridge model is the flagship but not dominant.</p>
+        </>)}
+      </Section>
+
+      <Section title="In-game win probability">
+        <p>The Game page&apos;s win-probability line comes from a logistic regression on play-by-play score states. Its inputs are the current margin scaled by the square root of the time left, our calibrated pregame probability weighted by the share of regulation left, the raw margin, an overtime flag, a last-two-minutes margin term and the time left. The line is anchored so it equals the pregame probability at tip-off; the anchor fades out by the end of regulation, and the final point is the result. The model for each season is fit only on earlier seasons (play-by-play starts in 2015-16), and only on games whose play-by-play final score matches the box score. ESPN&apos;s own win probabilities are not used.</p>
+        {ig && (<>
+          <p>Out of sample, {seasonRange(ig.test_seasons[0], ig.test_seasons[1])} ({ig.pooled.n_states.toLocaleString()} game states): log loss {ig.pooled.log_loss.toFixed(4)}. Last season: {(() => { const k = Object.keys(ig.by_season).sort().pop() as string; const v = ig.by_season[k]; return `${v.log_loss.toFixed(4)} versus ${v.log_loss_pregame_only.toFixed(4)} for the pregame probability alone and ${v.log_loss_margin_only.toFixed(4)} for margin and time only`; })()}.</p>
+          <table className="dense prose"><thead><tr><th className="l">Time left</th><th>States</th><th>Avg predicted</th><th>Home won</th><th>Calibration error</th><th>Worst bin gap</th></tr></thead>
+            <tbody>{ig.calibration_by_time_left.map((r) => (
+              <tr key={r.bucket}><td className="l">{r.bucket}</td><td>{r.n.toLocaleString()}</td><td>{(r.mean_pred * 100).toFixed(1)}%</td><td>{(r.observed * 100).toFixed(1)}%</td><td>{(r.ece * 100).toFixed(1)} pp</td><td>{(r.worst_bin_gap * 100).toFixed(1)} pp</td></tr>))}</tbody></table>
+          <p className="text-xs">Calibration error = average gap between predicted and observed win rates over ten probability bins (bins with 500+ states for the worst gap). Overtime has far fewer states and is the least calibrated bucket.</p>
         </>)}
       </Section>
 

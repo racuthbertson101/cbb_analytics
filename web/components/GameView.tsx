@@ -11,6 +11,8 @@ import TeamLogo from "./TeamLogo";
 import ContextTag from "./ui/ContextTag";
 import { ScoreLink } from "./ui/GameLink";
 import MatchupBar from "./ui/MatchupBar";
+import ShotChart, { Bins } from "./ShotChart";
+import WinProbChart, { Detail } from "./WinProbChart";
 import SeasonChip from "./ui/SeasonChip";
 
 type Cell = string | number | null;
@@ -140,6 +142,12 @@ function Completed({ g, season, map, games }: { g: Game; season: number; map: Ma
   const { data: LIVE } = useJson<{ logged_seasons?: number[] }>("accuracy/live.json");
   const { data: LOG } = useJson<Logged>(LIVE?.logged_seasons?.includes(season) ? `accuracy/logged/${season}.json` : null);
   const ftaCoef = POSS?.fta_coef ?? 0.4856;
+  const gdFirst = meta?.limits?.gamedetail_first ?? 2025;
+  const { data: GDI } = useJson<{ ids: string[] }>(meta && season >= gdFirst ? `gamedetail/${season}/index.json` : null);
+  const { data: GD } = useJson<Detail>(GDI?.ids.includes(g.id) ? `gamedetail/${season}/${g.id}.json` : null);
+  const hasShots = !!meta?.shot_seasons?.includes(season);
+  const { data: SA } = useJson<{ bins: Bins; games?: Record<string, Bins> }>(hasShots && aD1 ? `shots/${season}/${g.a}.json` : null);
+  const { data: SH } = useJson<{ bins: Bins; games?: Record<string, Bins> }>(hasShots && hD1 ? `shots/${season}/${g.h}.json` : null);
 
   const home = sideOf(TH, g.id, true) ?? sideOf(TA, g.id, false);
   const away = sideOf(TA, g.id, true) ?? sideOf(TH, g.id, false);
@@ -148,13 +156,16 @@ function Completed({ g, season, map, games }: { g: Game; season: number; map: Ma
   const lh = useMemo(() => lines(PH), [PH]); // eslint-disable-line react-hooks/exhaustive-deps
   const teamMin = (l: { min: number }[] | null) => (l && l.length ? l.reduce((t, x) => t + x.min, 0) : null);
   const tm = teamMin(lh) ?? teamMin(la);
-  const ot = tm != null && tm >= 215 ? Math.round((tm - 200) / 25) : 0; // regulation = 5 x 40 = 200 player-minutes; each OT adds 25
+  const gdEnd = GD ? GD.wp[GD.wp.length - 1][0] : null;
+  const ot = gdEnd != null ? Math.max(0, Math.round((gdEnd - 2400) / 300)) // play-by-play clock when available
+    : tm != null && tm >= 215 ? Math.round((tm - 200) / 25) : 0; // else player minutes: regulation = 5 x 40 = 200, each OT adds 25
 
   return (
     <div>
       <Header g={g} season={season} map={map} ot={ot} />
       {PP && g.pm != null && <PredictionStrip g={g} PP={PP} map={map} logged={LOG?.games[g.id]} hasLog={!!LIVE?.logged_seasons?.length} />}
-      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+      {GD && <GameFlow d={GD} home={map.get(g.h)?.short ?? g.hn ?? "Home"} away={map.get(g.a)?.short ?? g.an ?? "Away"} ch={color(map.get(g.h))} ca={color(map.get(g.a))} />}
+      <div className="mb-6 grid grid-cols-1 gap-6 2xl:grid-cols-2">
         {[{ t: g.a, l: la, s: away, d1: aD1, name: g.an }, { t: g.h, l: lh, s: home, d1: hD1, name: g.hn }].map((x) => (
           <BoxScore key={x.t} team={map.get(x.t)} fallbackName={x.name} lines={x.l} totals={x.s} season={season} d1={x.d1} plogFirst={PLOG_FIRST} />
         ))}
@@ -165,7 +176,37 @@ function Completed({ g, season, map, games }: { g: Game; season: number; map: Ma
           <ExpectedVsActual plogFirst={PLOG_FIRST} rows={[...(la ?? []).map((r) => ({ ...r, tid: g.a })), ...(lh ?? []).map((r) => ({ ...r, tid: g.h }))]} map={map} />
         </div>
       )}
+      {(SA?.games?.[g.id] || SH?.games?.[g.id]) && (
+        <div className={`${card} mb-6`}>
+          <h2 className={h2}>Shot charts</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {[{ t: g.a, S: SA }, { t: g.h, S: SH }].map(({ t, S }) => S?.games?.[g.id] ? (
+              <ShotChart key={t} bins={S.games[g.id]} league={S.bins} title={`${map.get(t)?.short ?? ""} shots`} baseline="its own season" />
+            ) : null)}
+          </div>
+        </div>
+      )}
       <MoreGames g={g} season={season} games={games} map={map} />
+    </div>
+  );
+}
+
+function GameFlow({ d, home, away, ch, ca }: { d: Detail; home: string; away: string; ch: string; ca: string }) {
+  const stat = (l: string, v: React.ReactNode, sub?: string) => (
+    <div><div className="text-xs text-muted">{l}</div><div className="num text-xl font-semibold">{v}</div>{sub && <div className="text-xs text-faint">{sub}</div>}</div>
+  );
+  return (
+    <div className={`${card} mb-6`}>
+      <h2 className={h2} title="In-game model fit walk-forward on earlier seasons' play-by-play, anchored to the pregame probability (see Methodology).">Win probability <span className="cursor-help normal-case">ⓘ</span></h2>
+      <WinProbChart d={d} home={home} away={away} ch={ch} ca={ca} />
+      <div className="mt-4 grid grid-cols-2 gap-4 border-t border-line pt-4 md:grid-cols-5">
+        {stat("Lead changes", d.lead_changes)}
+        {stat("Ties", d.ties)}
+        {stat(`Largest lead, ${home}`, d.largest.h)}
+        {stat(`Largest lead, ${away}`, d.largest.a)}
+        {stat("Excitement", fmtEff(d.excitement, 2), `${ordinal(Math.round(d.excitement_pct * 100))} percentile this season`)}
+      </div>
+      <p className="mt-3 text-xs text-faint">Excitement = total movement of the win-probability line (sum of every swing). Shaded bands = runs of 8-0 or more.</p>
     </div>
   );
 }
@@ -495,7 +536,7 @@ function MoreGames({ g, season, games, map }: { g: Game; season: number; games: 
   const nm = (id: string, fallback?: string | null) => map.get(id)?.short ?? fallback ?? "Non-D-I";
   const before = (x: Game) => x.d < g.d; // strictly earlier dates: rest days and common opponents use only games before this one
   const pair = (x: Game) => (x.h === g.h && x.a === g.a) || (x.h === g.a && x.a === g.h);
-  const h2h = [...(GP?.games ?? []).map((x) => ({ x, s: season - 1 })), ...games.map((x) => ({ x, s: season }))].filter(({ x }) => x.ok && x.id !== g.id && pair(x));
+  const h2h = [...(GP?.games ?? []).map((x) => ({ x, s: season - 1 })), ...games.map((x) => ({ x, s: season }))].filter(({ x }) => x.ok && x.id !== g.id && pair(x) && x.d < g.d); // earlier meetings only
   const rest = (tid: string) => {
     const prev = games.filter((x) => x.ok && before(x) && (x.h === tid || x.a === tid)).map((x) => x.d).sort().pop();
     return prev ? Math.round((Date.parse(g.d) - Date.parse(prev)) / 864e5) : null;

@@ -5,7 +5,7 @@ export type Bins = [number, number, number, number][]; // bx, by, attempts, make
 const BIN = 3, X0 = -25, Y0 = -6;
 
 /** Half-court shot chart: circle size = attempts, color = FG% versus the league in that cell (shrunk toward the league for small samples). */
-export default function ShotChart({ bins, league, title }: { bins: Bins; league: Bins; title?: string }) {
+export default function ShotChart({ bins, league, title, baseline = "league" }: { bins: Bins; league: Bins; title?: string; baseline?: string }) {
   const lg = new Map(league.map(([x, y, a, m]) => [`${x},${y}`, m / Math.max(1, a)]));
   const maxA = Math.max(1, ...bins.map((b) => b[2]));
   const tot = bins.reduce((s, b) => s + b[2], 0), mk = bins.reduce((s, b) => s + b[3], 0);
@@ -45,7 +45,7 @@ export default function ShotChart({ bins, league, title }: { bins: Bins; league:
         <span>Mid-range <b className="num text-ink">{fg(rim.midM, rim.mid)}</b></span>
         <span>Three <b className="num text-ink">{fg(rim.threeM, rim.three)}</b></span>
       </div>
-      <p className="mt-1 text-[11px] text-faint">Circle size = attempts; teal = above league FG% in that cell, orange = below. Free throws excluded.</p>
+      <p className="mt-1 text-[11px] text-faint">Circle size = attempts; teal = above {baseline} FG% in that cell, orange = below. Free throws excluded.</p>
     </div>
   );
 }
