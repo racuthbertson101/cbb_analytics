@@ -24,7 +24,7 @@ function Inner() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3"><SearchPalette /><span className="text-xs text-faint">Men&apos;s Division I</span></div>
+        <div className="ml-auto flex items-center gap-3"><SearchPalette /></div>
       </div>
     </header>
   );

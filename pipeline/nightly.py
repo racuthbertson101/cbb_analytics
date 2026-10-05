@@ -178,6 +178,13 @@ def main(argv=None):
     accuracy.live_summary()
     accuracy.backtest_summary()
 
+    # publish run status for the site footer (AUDIT F-5, R-6)
+    gc = pd.read_parquet(table_path("games", cur), columns=["game_date", "completed"])
+    status["data_through"] = str(gc[gc.completed].game_date.max().date()) if gc.completed.any() else None
+    status.update(live=live, updated=datetime.now(timezone.utc).isoformat())
+    contract.write("status.json", {"data_through": status["data_through"], "season": cur, "live": live, "today": str(today),
+                                   "updated": status["updated"], "logged": status.get("logged"), "source": "nightly"})
+
     # 8. static site build
     if not a.no_build:
         env = dict(os.environ, NEXT_PUBLIC_BASE_PATH=a.base_path)

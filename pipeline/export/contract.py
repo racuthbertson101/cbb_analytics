@@ -239,6 +239,8 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
                         "shot_seasons": [y for y in seasons if (OUT / "shots" / str(y) / "league.json").exists()], "upcoming_first_date": (str(pd.read_parquet(table_path("games", upcoming)).game_date.min().date()) if upcoming else None),
                         "seasons": [y for y in seasons if y <= current], "last_game_date": last_dates[cur],
                         "default_asof": (str(pd.read_parquet(table_path("games", upcoming)).game_date.min().date()) if upcoming else last_dates[cur]), "current_last_date": str(pd.read_parquet(table_path("games", cur)).game_date.max().date()), "season_first_date": str(pd.read_parquet(table_path("games", cur)).game_date.min().date()), "generated": pd.Timestamp.now("UTC").isoformat()})
+    # freshness for the site footer; the nightly run rewrites this with its own details (pipeline/nightly.py)
+    write("status.json", {"data_through": last_dates[cur], "season": cur, "updated": pd.Timestamp.now("UTC").isoformat(), "source": "export"})
     write("tournament.json", {"status": "coming_soon", "brackets": []})
     write("params/predict.json", {"sigma_coef": prod["sigma_coef"], "cal_x": prod["calibration_grid_x"][::5], "cal_y": prod["calibration_grid_y"][::5],
                                   "q10": prod["margin_residual_quantiles"]["0.1"], "q90": prod["margin_residual_quantiles"]["0.9"],
