@@ -62,7 +62,10 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 3b.3 gamedetail shards 2025+ (11,325 games), live timelines from ESPN summaries, per-game shot bins
   - [x] 3b.4 Game page: WP chart with runs and hover, flow stats, excitement percentile, game shot charts; Methodology section
   - Verified 2026-10-05: pytest 255 passed; site 252.7 MB; next build ok; 52/52 screenshot loads clean (incl. a 2OT game)
-- [ ] Phase 4: Compare page <- NEXT
+- [ ] Phase 4: Compare page
+  - [x] 4a.1-4a.4 profiles, team histories, analogs; matchup test pre-registered (ec3125e), run: nothing adopted (all context only)
+  - [x] 4b.1 Compare page rebuilt (17 sections, ContextTags from matchup_eval.json, GameLinks); screenshots clean for Michigan-Duke, 2015 Kentucky vs 2026 Michigan, Belmont-Drake
+  - [ ] Remaining 4b polish: measure first-load transfer (< 2.5 MB target); hide "Rest and schedule" in the offseason (it currently shows days since the last game); player-driven system shows "–" in Compare; update docs/DATA_CONTRACT.md for profiles/teamhistory/analogs; full pytest + 1440/1920 screenshot pass <- NEXT
 - [x] Phase 3: Game page (2026-10-05)
 - [ ] Phase 5: RAPM impact, star power, estimate interval
 - [ ] Phase 6: Modeling cleanup and conference fixes
