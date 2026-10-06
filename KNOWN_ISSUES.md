@@ -14,3 +14,4 @@
 - Play-by-play feeds before 2024-25 end early in 1.5-4% of D-I games (final pbp score below the box score). Those games are excluded from the in-game model and have no win-probability chart (DATA_AUDIT.md coverage table).
 - In-game win probability in overtime: calibration error 2.3 pp (above the 2 pp target met by every regulation bucket), on ~46k states from ~1,300 overtime games. The average gap is 0.8 pp. No overtime-specific model was fit (too few games to validate one).
 - Lineup data (substitutions) exists only from 2024-25 on (26% of 2024-25 games, all of 2025-26). Play-by-play RAPM and anything built on it cover 2025-26 on, plus part of 2024-25. Older seasons keep only box-score measures.
+- Impact v2 (RAPM with box prior) misses one smell test for 2025-26: centers average +2.40 per 100 against a +/-2 limit. It stays labeled experimental. It is far better than v1 (centers +13.7), and the limit is a heuristic from the plan.

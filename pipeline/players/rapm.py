@@ -53,18 +53,25 @@ def design(r: pd.DataFrame, players: list[str]):
     return sparse.hstack([X, sparse.csr_matrix(r.site.values.reshape(-1, 1))]).tocsr()
 
 
-def fit(r: pd.DataFrame, lam: float, players: list[str] | None = None) -> dict:
+def fit(r: pd.DataFrame, lam: float, players: list[str] | None = None, prior_off: dict | None = None, prior_def: dict | None = None) -> dict:
+    """With prior_off/prior_def (player -> per-100 value, defense positive = good), the ridge shrinks toward the prior
+    instead of toward zero: solve for the deviation from the prior (Phase 5b)."""
     players = players or sorted({p for L in r["off"] for p in L} | {p for L in r["def"] for p in L})
     X, w = design(r, players), r.poss.values
-    mu = float(np.average(r.y, weights=w))
+    b0 = np.zeros(2 * len(players) + 1)
+    if prior_off is not None:
+        b0[:len(players)] = [prior_off.get(p, 0.0) for p in players]
+        b0[len(players):2 * len(players)] = [-prior_def.get(p, 0.0) for p in players]  # model defense sign: + = allows more
+    mu = float(np.average(r.y - X @ b0, weights=w))
     W = sparse.diags(w)
     pen = np.r_[np.full(2 * len(players), lam), 1e-6]  # home term unpenalized
     A = (X.T @ W @ X + sparse.diags(pen)).tocsr()
     # symmetric positive definite: conjugate gradient with a Jacobi preconditioner (a direct solve took >10 min)
     dinv = 1 / A.diagonal()
-    b, info = cg(A, X.T @ (w * (r.y.values - mu)), M=LinearOperator(A.shape, lambda v: dinv * v), rtol=1e-8, maxiter=5000)
+    b, info = cg(A, X.T @ (w * (r.y.values - mu - X @ b0)), M=LinearOperator(A.shape, lambda v: dinv * v), rtol=1e-8, maxiter=5000)
     if info:
         raise RuntimeError(f"RAPM solver did not converge (info={info})")
+    b = b + b0
     P = len(players)
     return {"players": players, "off": b[:P], "def": -b[P:2 * P], "home": float(b[-1]), "mu": mu}
 
