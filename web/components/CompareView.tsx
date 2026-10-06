@@ -118,7 +118,8 @@ export default function CompareView() {
   };
   const nameA = ta?.short ?? "A", nameB = tb?.short ?? "B";
   const seasons = [...(meta?.seasons ?? []), ...(meta?.upcoming_season ? [meta.upcoming_season] : [])].reverse();
-  const live = !!meta && season === meta.current_season && !cross;
+  // in season only: during the offseason meta lists an upcoming (preseason) season and rest/as-of controls are meaningless
+  const live = !!meta && season === meta.current_season && meta.upcoming_season == null && !cross;
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -277,7 +278,7 @@ function MarginDist({ out, nameA, ca, cb }: { out: Out; nameA: string; ca: strin
       <line x1={X(out.m)} x2={X(out.m)} y1={Y(1) - 8} y2={Y(0)} stroke="var(--accent)" strokeWidth={2} />
       {x0 < 0 && x1 > 0 && <line x1={X(0)} x2={X(0)} y1={8} y2={Y(0)} stroke="var(--border)" strokeDasharray="3 3" />}
       <line x1={0} x2={W} y1={Y(0)} y2={Y(0)} stroke="var(--border)" />
-      {x0 < 0 && x1 > 0 && <text x={X(0)} y={H - 4} textAnchor="middle" fontSize={10} fill="var(--muted)">0</text>}
+      {x0 < 0 && x1 > 0 && Math.abs(X(0) - X(out.m)) > 60 && <text x={X(0)} y={H - 4} textAnchor="middle" fontSize={10} fill="var(--muted)">0</text>}
       <text x={X(out.m)} y={H - 4} textAnchor="middle" fontSize={10} fill="var(--accent)">{nameA} {fmtRating(out.m)}</text>
       <text x={4} y={12} fontSize={10} fill="var(--muted)">{nameA} margin → (bar = 80% of results)</text>
     </svg>

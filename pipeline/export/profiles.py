@@ -96,10 +96,11 @@ def build_profiles(t: dict, asof: pd.Timestamp, fta_coef: float, win_prob) -> di
     sysd = t.get("systems")
     sys_vals = {}
     if sysd:
-        before = [k for k, d in enumerate(sysd["dates"]) if pd.Timestamp(d) < asof]
+        # a snapshot dated D is fit on games before D (site convention), so snapshots dated up to asof are pre-asof information
+        before = [k for k, d in enumerate(sysd["dates"]) if pd.Timestamp(d) <= asof]
         sysd = sysd if before else None
     if sysd:
-        i = before[-1]  # latest weekly snapshot strictly before asof
+        i = before[-1]  # latest weekly snapshot at or before asof
         for k in ("adj", "cons", "elo", "bt", "pd", "mrank", "wab", "sor", "sos", "ncsos"):
             if k in sysd and sysd[k] is not None:
                 vals = pd.Series(sysd[k][i], index=sysd["teams"], dtype=float)
