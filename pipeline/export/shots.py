@@ -18,6 +18,7 @@ from .contract import OUT, write
 BIN = 3.0
 SHOT_SEASONS = 1  # latest season only: the 2025 shots file covers only ~1/4 as many shots as 2026 (source gap, KNOWN_ISSUES)
 MIN_PLAYER_SHOTS = 25
+SHOT_FIRST = 2026  # DEFINITION: first season with complete shot locations (a rehearsal of a 2024-25 date once exported 2025)
 
 
 def prep(season: int, force: bool = False) -> pd.DataFrame | None:
@@ -50,7 +51,7 @@ def available_seasons() -> list[int]:
 
 def export_shots(last_season=CURRENT_SEASON, force: bool = False):
     """Write shards for the latest season(s). Missing source = no-op (shards from the release, if any, are kept)."""
-    for y in range(last_season - SHOT_SEASONS + 1, last_season + 1):
+    for y in range(max(last_season - SHOT_SEASONS + 1, SHOT_FIRST), last_season + 1):
         d = prep(y, force)
         if d is None:
             continue
