@@ -1,0 +1,131 @@
+{
+ "sigma2_eff": 157.656,
+ "sigma_eff": 12.556,
+ "by_season": {
+  "2012": {
+   "rows": 10748,
+   "teams": 344,
+   "sigma2": 155.3747453450949
+  },
+  "2013": {
+   "rows": 10916,
+   "teams": 347,
+   "sigma2": 158.33538269785083
+  },
+  "2014": {
+   "rows": 10992,
+   "teams": 351,
+   "sigma2": 151.58859851771044
+  },
+  "2015": {
+   "rows": 10994,
+   "teams": 351,
+   "sigma2": 164.09009661617017
+  },
+  "2016": {
+   "rows": 10922,
+   "teams": 351,
+   "sigma2": 149.42052883479602
+  },
+  "2017": {
+   "rows": 10972,
+   "teams": 351,
+   "sigma2": 150.98790585936183
+  },
+  "2018": {
+   "rows": 11078,
+   "teams": 351,
+   "sigma2": 156.0330403816982
+  },
+  "2019": {
+   "rows": 11202,
+   "teams": 353,
+   "sigma2": 161.61488384000657
+  },
+  "2020": {
+   "rows": 10648,
+   "teams": 353,
+   "sigma2": 155.22837511360123
+  },
+  "2021": {
+   "rows": 7886,
+   "teams": 347,
+   "sigma2": 160.10505915780078
+  },
+  "2022": {
+   "rows": 10950,
+   "teams": 358,
+   "sigma2": 160.65264511886141
+  },
+  "2023": {
+   "rows": 11428,
+   "teams": 363,
+   "sigma2": 159.9634596757079
+  },
+  "2024": {
+   "rows": 11446,
+   "teams": 362,
+   "sigma2": 158.5870369503443
+  },
+  "2025": {
+   "rows": 11518,
+   "teams": 364,
+   "sigma2": 159.24946116848292
+  },
+  "2026": {
+   "rows": 11504,
+   "teams": 365,
+   "sigma2": 163.61524000821848
+  }
+ },
+ "method": "residual variance of team-game efficiency (points per 100) at end-of-season fits, df-corrected, mean over seasons",
+ "coverage_final_within_1sd": {
+  "11-30": {
+   "n": 5311,
+   "within_1sd": 0.836
+  },
+  "12-31": {
+   "n": 5311,
+   "within_1sd": 0.863
+  },
+  "01-31": {
+   "n": 5311,
+   "within_1sd": 0.953
+  },
+  "02-28": {
+   "n": 5311,
+   "within_1sd": 0.995
+  }
+ },
+ "mean_em_sd_by_games_played": {
+  "0": 10.25,
+  "1-3": 8.37,
+  "4-6": 6.58,
+  "7-10": 5.47,
+  "11-15": 4.64,
+  "16-20": 4.02,
+  "21-25": 3.64,
+  "26-30": 3.35,
+  "31+": 3.15
+ },
+ "note_coverage": "share of teams whose end-of-season margin lies within the earlier rating +/- 1 sd (target 60-75%)",
+ "revision_check": {
+  "11-30": {
+   "observed_over_expected_variance": 0.679,
+   "within_1sd_of_revision": 0.768
+  },
+  "12-31": {
+   "observed_over_expected_variance": 0.788,
+   "within_1sd_of_revision": 0.735
+  },
+  "01-31": {
+   "observed_over_expected_variance": 0.812,
+   "within_1sd_of_revision": 0.731
+  },
+  "02-28": {
+   "observed_over_expected_variance": 0.826,
+   "within_1sd_of_revision": 0.744
+  }
+ },
+ "note_revision": "The end-of-season rating contains the games the earlier rating used, so the plan's coverage test is biased high. The calibrated check: the later revision (final - earlier) should have variance sd_earlier^2 - sd_final^2, and 68% of revisions should fall within that sd."
+}

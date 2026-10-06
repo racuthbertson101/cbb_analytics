@@ -59,6 +59,7 @@ class Ratings:
     n_games: np.ndarray
     asof: int  # day number of the fit (games strictly before)
     params: dict = field(default_factory=dict)
+    em_sd: np.ndarray | None = None  # posterior sd of each team's efficiency margin (o - d), per 100 possessions (Phase 5c)
 
     # ---- derived ----
     def adj_off(self):
@@ -71,8 +72,11 @@ class Ratings:
         return self.o - self.d
 
     def table(self) -> pd.DataFrame:
-        return pd.DataFrame({"team_id": self.teams, "adj_off": self.adj_off(), "adj_def": self.adj_def(),
-                             "adj_margin": self.adj_margin(), "adj_tempo": self.mu_t + 2 * self.t, "n_games": self.n_games})
+        t = pd.DataFrame({"team_id": self.teams, "adj_off": self.adj_off(), "adj_def": self.adj_def(),
+                          "adj_margin": self.adj_margin(), "adj_tempo": self.mu_t + 2 * self.t, "n_games": self.n_games})
+        if self.em_sd is not None:
+            t["em_sd"] = self.em_sd
+        return t
 
     # ---- prediction (shared interface) ----
     def predict(self, team_a, team_b, site=1.0, date=None) -> dict:
@@ -156,6 +160,13 @@ def fit(sd: SeasonData, n: int, asof_day: int, params: dict) -> Ratings:
         beta = np.linalg.solve(A, rhs)
         o, d, hca, mu = beta[:N], beta[N:2 * N], beta[2 * N], beta[2 * N + 1]
         h = beta[2 * N + 2:] if use_h else None
+        if params.get("with_sd"):
+            # Gaussian-prior reading of the ridge: posterior Var(beta) = sigma2 * A^-1, with sigma2 the per-row efficiency noise
+            # (fitted constant, pipeline/params/rating_sd.json). Var(o_i - d_i) from the 2x2 block of team i.
+            Ai = np.linalg.inv(A)
+            ii = np.arange(N)
+            var_em = Ai[ii, ii] + Ai[N + ii, N + ii] - 2 * Ai[ii, N + ii]
+            em_sd = np.sqrt(np.maximum(var_em, 0) * params["sigma2_eff"])
 
     # tempo
     Xt = sp.csr_matrix((np.ones(3 * n), (np.concatenate([r, r, r]), np.concatenate([ia, ib, np.full(n, N)]))), shape=(n, N + 1))
@@ -172,4 +183,5 @@ def fit(sd: SeasonData, n: int, asof_day: int, params: dict) -> Ratings:
     bt = np.linalg.solve(At, rt)
     ng = np.bincount(ia, minlength=N) + np.bincount(ib, minlength=N)
     return Ratings(sd.teams, sd.tix, o, d, bt[:N], float(mu), float(hca), float(bt[N]), h, ng, asof_day,
-                   {k: v for k, v in params.items() if not k.startswith("prior_")})
+                   {k: v for k, v in params.items() if not k.startswith("prior_")},
+                   em_sd if params.get("with_sd") and not params.get("skip_eff") else None)

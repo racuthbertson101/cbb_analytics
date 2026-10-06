@@ -58,6 +58,9 @@ def run_season(S: int):
     fin = finals_no_prior(_ctx, cfg)
     coefs = prior_coefs(_ctx, fin, S)
     prior = build_prior(_ctx, fin, S, coefs)
+    from .rating_sd import sigma2
+
+    prior = {**prior, "with_sd": True, "sigma2_eff": sigma2()}  # Phase 5c: record rating uncertainty with each snapshot
     sd = _ctx.sd[S]
     rat = []
 

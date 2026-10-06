@@ -76,6 +76,10 @@ def ratings_asof(ctx: Context, season: int, asof, prod: dict | None = None) -> a
     n = int(np.searchsorted(sd.date, day, side="left"))
     p = base_params(cfg)
     p.update(prior)
+    from .rating_sd import OUT as SD_PARAMS, sigma2
+
+    if SD_PARAMS.exists():
+        p.update(with_sd=True, sigma2_eff=sigma2())
     return adjeff.fit(sd, n, day, p)
 
 
