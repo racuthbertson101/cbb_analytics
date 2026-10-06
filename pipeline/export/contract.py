@@ -47,6 +47,16 @@ def r1(a):
     return [None if not np.isfinite(x) else round(float(x), 1) for x in a]
 
 
+Z80 = 1.2816  # DEFINITION: half-width of a central 80% normal interval, in sd units
+
+
+def est_band(cal, m, poss, sd_a, sd_b):
+    """80% range of our estimate of the home win probability (Phase 5c.2, AUDIT M-1): the calibrated probability at the
+    predicted margin +/- 1.28 margin sd, with margin sd = poss/100 * sqrt(sd_a^2 + sd_b^2) from the rating posteriors."""
+    sdm = np.asarray(poss) / 100 * np.sqrt(np.asarray(sd_a, float) ** 2 + np.asarray(sd_b, float) ** 2)
+    return cal._win_prob(np.asarray(m) - Z80 * sdm, poss), cal._win_prob(np.asarray(m) + Z80 * sdm, poss)
+
+
 def _predict_table(tbl: pd.DataFrame, prod: dict, cal, home, away, neutral) -> pd.DataFrame:
     """Predictions for scheduled games from a ratings table (index team_id; adj_off, adj_def, adj_tempo, mu, hca)."""
     h, a = tbl.loc[home], tbl.loc[away]
@@ -56,7 +66,10 @@ def _predict_table(tbl: pd.DataFrame, prod: dict, cal, home, away, neutral) -> p
     eb = a.adj_off.values + h.adj_def.values - mu - hca
     poss = (h.adj_tempo.values + a.adj_tempo.values) / 2
     m = (ea - eb) * poss / 100
-    return pd.DataFrame({"pm": m, "pp": poss, "p": cal._win_prob(m, poss), "ph": ea * poss / 100, "pa": eb * poss / 100})
+    out = pd.DataFrame({"pm": m, "pp": poss, "p": cal._win_prob(m, poss), "ph": ea * poss / 100, "pa": eb * poss / 100})
+    if "em_sd" in tbl:
+        out["pel"], out["peh"] = est_band(cal, m, poss, h.em_sd.values, a.em_sd.values)
+    return out
 
 
 def export_all(current: int = 2026, upcoming: int | None = 2027):
@@ -103,14 +116,21 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         last_dates[y] = str(comp.game_date.max().date()) if len(comp) else None
         rated = y in have_R and len(comp) > 0  # a season with ratings but no results yet (opening morning) exports as preseason
         # predictions
-        pred = pd.DataFrame(columns=["game_id", "pm", "pp", "p"])
+        pred = pd.DataFrame(columns=["game_id", "pm", "pp", "p", "pel", "peh"])
         if rated:
             p = P[P.season == y].copy()
             p["pm"] = p.pred_a - p.pred_b
             p["pp"] = p.pred_poss
             p["p"] = cal._win_prob(p.pm.values, p.pp.values)
             p["ph"], p["pa"] = p.pred_a, p.pred_b
-            pred = p[["game_id", "pm", "pp", "p", "ph", "pa"]]
+            if "em_sd" in R:  # each team's rating sd on the game date (the snapshot the prediction used)
+                sdt = R[R.season == y][["date", "team_id", "em_sd"]]
+                p = p.merge(sdt.rename(columns={"team_id": "a", "em_sd": "sd_a"}), on=["date", "a"], how="left")
+                p = p.merge(sdt.rename(columns={"team_id": "b", "em_sd": "sd_b"}), on=["date", "b"], how="left")
+                p["pel"], p["peh"] = est_band(cal, p.pm.values, p.pp.values, p.sd_a.values, p.sd_b.values)
+            else:
+                p["pel"] = p["peh"] = np.nan
+            pred = p[["game_id", "pm", "pp", "p", "ph", "pa", "pel", "peh"]]
             fut = g[~g.completed]
             Ry_ = R[R.season == y]
             tbl_ = Ry_[Ry_.date == Ry_.date.max()].set_index("team_id")
@@ -118,7 +138,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             if len(fut):
                 fp = _predict_table(tbl_, prod, cal, fut.home_id.values, fut.away_id.values, fut.neutral_site.values)
                 fp.insert(0, "game_id", fut.game_id.values)
-                pred = pd.concat([pred, fp[pred.columns]], ignore_index=True)
+                pred = pd.concat([pred, fp.reindex(columns=pred.columns)], ignore_index=True)
         else:
             r = ratings_asof(ctx, y, pd.Timestamp(f"{y - 1}-10-01"), prod)
             pr = Predictor(r, prod)
@@ -128,6 +148,8 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             d = pr.predict_arrays(ia, ib, site)
             pred = pd.DataFrame({"game_id": up.game_id.values, "pm": d.margin.values, "pp": d.poss.values, "p": d.win_prob_a.values,
                                  "ph": d.score_a.values, "pa": d.score_b.values})
+            if r.em_sd is not None:
+                pred["pel"], pred["peh"] = est_band(cal, pred.pm.values, pred.pp.values, r.em_sd[ia], r.em_sd[ib])
         g = g.merge(pred, on="game_id", how="left")
         # watchability (pregame only): ratings as of each date, last-season star impact, title leverage from a standings simulation if present
         star = W.star_table(y)
@@ -156,7 +178,9 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             rows.append({"id": r.game_id, "d": str(r.game_date.date()), "a": r.away_id, "h": r.home_id,
                          "as": r.away_score if r.completed else None, "hs": r.home_score if r.completed else None,
                          "n": bool(r.neutral_site), "t": r.game_type, "cg": bool(r.conference_game),
-                         "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p, "ph": r.ph, "pa": r.pa,
+                         "ok": bool(r.completed), "pm": r.pm, "pp": r.pp, "p": r.p,
+                         "pel": None if pd.isna(getattr(r, "pel", np.nan)) else round(float(r.pel), 3),
+                         "peh": None if pd.isna(getattr(r, "peh", np.nan)) else round(float(r.peh), 3), "ph": r.ph, "pa": r.pa,
                          "ar": None if pd.isna(r.away_rank) or r.away_rank > 25 else int(r.away_rank),
                          "hr": None if pd.isna(r.home_rank) or r.home_rank > 25 else int(r.home_rank),
                          **({} if r.away_id in d1_ids else {"an": names.get(r.away_id, {}).get("display_name")}),
@@ -175,7 +199,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             dates = sorted(Ry.date.unique())
             teams_y = sorted(Ry.team_id.unique())
             ti = {t: i for i, t in enumerate(teams_y)}
-            mats = {k: np.full((len(dates), len(teams_y)), np.nan) for k in ("adj_off", "adj_def", "adj_tempo", "n_games")}
+            mats = {k: np.full((len(dates), len(teams_y)), np.nan) for k in ("adj_off", "adj_def", "adj_tempo", "n_games") + (("em_sd",) if "em_sd" in Ry else ())}
             di = {d: i for i, d in enumerate(dates)}
             ii = Ry.date.map(di).values
             jj = Ry.team_id.map(ti).values
@@ -183,6 +207,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
                 mats[k][ii, jj] = Ry[k].values
             write(f"ratings/{y}.json", {"season": y, "dates": [str(pd.Timestamp(d).date()) for d in dates], "teams": teams_y,
                                         "off": [r1(x) for x in mats["adj_off"]], "def": [r1(x) for x in mats["adj_def"]],
+                                        **({"sd": [r1(x) for x in mats["em_sd"]]} if "em_sd" in mats else {}),
                                         "mu": [round(float(Ry[Ry.date == d_].mu.iloc[0]), 2) for d_ in dates], "hca": [round(float(Ry[Ry.date == d_].hca.iloc[0]), 3) for d_ in dates],
                                         "tempo": [r1(x) for x in mats["adj_tempo"]], "gp": [[None if np.isnan(v) else int(v) for v in x] for x in mats["n_games"]]})
             fin = Ry[Ry.date == dates[-1]].set_index("team_id")
@@ -239,7 +264,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
             r = ratings_asof(ctx, y, pd.Timestamp(f"{y - 1}-10-01"), prod)
             t = r.table()
             write(f"ratings/{y}_preseason.json", {"season": y, "mu": round(float(r.mu), 2), "hca": round(float(r.hca), 3), "teams": t.team_id.tolist(), "off": r1(t.adj_off), "def": r1(t.adj_def),
-                                                  "tempo": r1(t.adj_tempo)})
+                                                  "tempo": r1(t.adj_tempo), **({"sd": r1(t.em_sd)} if "em_sd" in t else {})})
 
     cur = current
     write("meta.json", {"version": CONTRACT_VERSION, "sport": "mbb", "current_season": cur, "upcoming_season": upcoming,
@@ -263,7 +288,7 @@ def export_all(current: int = 2026, upcoming: int | None = 2027):
         idx["players"] = [[r_[c_.index("id")], r_[c_.index("name")], r_[c_.index("tid")], r_[c_.index("pos")]] for r_ in rows_]
     write("search.json", idx)
     # methodology inputs
-    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json", "rapm_compare.json", "ingame.json", "matchup_eval.json", "rapm.json", "players_v2.json", "watchability_validation.json"):
+    for name in ("adjeff.json", "backtest.json", "possessions.json", "players.json", "players_prior_eval.json", "consensus.json", "elo_mle.json", "bt.json", "player_driven.json", "rapm_compare.json", "ingame.json", "matchup_eval.json", "rapm.json", "players_v2.json", "watchability_validation.json", "rating_sd.json"):
         src = ROOT / "pipeline" / "params" / name
         if src.exists():
             d = json.loads(src.read_text())

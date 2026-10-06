@@ -228,7 +228,8 @@ function PredictionStrip({ g, PP, map, logged, hasLog }: { g: Game; PP: Pred; ma
           Result vs expectation <b className={diff >= 0 ? "text-accent2" : "text-[var(--bad)]"}>{fmtRating(diff)}</b> for {fav}
           <span className="text-muted"> ({ordinal(Math.round(pctile * 100))} percentile of the model&apos;s outcome distribution)</span>
         </p>
-        <p className="mt-2 text-xs text-muted">80% of results land in {fav} {fmtRating(Math.abs(pm) + PP.q10)} to {fmtRating(Math.abs(pm) + PP.q90)}. This is an outcome interval (game-to-game randomness), not uncertainty in the ratings.</p>
+        <p className="mt-2 text-xs text-muted">80% of results land in {fav} {fmtRating(Math.abs(pm) + PP.q10)} to {fmtRating(Math.abs(pm) + PP.q90)} (game-to-game randomness).
+          {g.pel != null && g.peh != null && <> 80% range of our estimate of {fav}&apos;s win probability: {favHome ? `${fmtPct(g.pel)}–${fmtPct(g.peh)}` : `${fmtPct(1 - g.peh)}–${fmtPct(1 - g.pel)}`} (uncertainty in the two teams&apos; ratings at the time).</>}</p>
         <p className="mt-2 text-xs">
           {logged ? (
             <span className="chip" title={`Hash-chained row ${logged[1]}…; made ${logged[4]} day(s) before the game`}>Logged {new Date(logged[0]).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })} · hash {logged[1]}</span>
@@ -403,6 +404,7 @@ function Upcoming({ g, season, map, games }: { g: Game; season: number; map: Map
                 <div className="absolute inset-y-0 right-0" style={{ width: `${g.p * 100}%`, background: color(h) }} />
               </div>
               <p className="mt-3 text-sm">{g.pm >= 0 ? nm(g.h, g.hn) : nm(g.a, g.an)} by {fmtEff(Math.abs(g.pm))} · 80% of results land in {nm(g.h, g.hn)} {fmtRating(g.pm + PP.q10, 0)} to {fmtRating(g.pm + PP.q90, 0)}</p>
+              {g.pel != null && g.peh != null && <p className="mt-1 text-xs text-muted">80% range of our estimate of {nm(g.h, g.hn)}&apos;s win probability: {fmtPct(g.pel)}–{fmtPct(g.peh)}. The ratings are estimates; this range narrows as the season goes on.</p>}
               {m && <Waterfall parts={m.parts} home={nm(g.h, g.hn)} total={m.margin} />}
               <Link className="mt-4 inline-block text-sm text-accent hover:underline" href={`/compare/?a=${g.h}&b=${g.a}&site=${g.n ? 0 : 1}&season=${season}`}>Full comparison →</Link>
             </>

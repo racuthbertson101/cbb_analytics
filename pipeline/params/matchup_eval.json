@@ -1076,7 +1076,7 @@
   }
  },
  "player_test": {
-  "status": "pre-registered",
+  "status": "evaluated",
   "registered": "2026-10-05",
   "question": "Does a team's star dependence matter more against an opponent with strong defensive depth (beyond the ratings)?",
   "feature": "star_x_depth = z(home star dependence) * z(away bench defense) - z(away star dependence) * z(home bench defense)",
@@ -1098,7 +1098,126 @@
    "both_required": true,
    "otherwise": "context only"
   },
-  "results": null,
-  "decision": null
+  "results": {
+   "n_games": 70091,
+   "features": [
+    "star_x_depth"
+   ],
+   "pooled_baseline": 0.52605,
+   "pooled_candidate": 0.52618,
+   "improvement": -0.00013,
+   "seasons_improved": 3,
+   "passes": false,
+   "by_season": {
+    "2012": {
+     "baseline": 0.50027,
+     "candidate": 0.5011,
+     "alpha": 100000.0,
+     "coef": [
+      -0.0027
+     ]
+    },
+    "2013": {
+     "baseline": 0.51388,
+     "candidate": 0.51413,
+     "alpha": 100000.0,
+     "coef": [
+      0.0053
+     ]
+    },
+    "2014": {
+     "baseline": 0.52065,
+     "candidate": 0.52097,
+     "alpha": 31622.776601683792,
+     "coef": [
+      0.0393
+     ]
+    },
+    "2015": {
+     "baseline": 0.52097,
+     "candidate": 0.521,
+     "alpha": 31622.776601683792,
+     "coef": [
+      0.0397
+     ]
+    },
+    "2016": {
+     "baseline": 0.51897,
+     "candidate": 0.51915,
+     "alpha": 100000.0,
+     "coef": [
+      0.021
+     ]
+    },
+    "2017": {
+     "baseline": 0.52432,
+     "candidate": 0.52444,
+     "alpha": 31622.776601683792,
+     "coef": [
+      0.0425
+     ]
+    },
+    "2018": {
+     "baseline": 0.51943,
+     "candidate": 0.51956,
+     "alpha": 100000.0,
+     "coef": [
+      0.0178
+     ]
+    },
+    "2019": {
+     "baseline": 0.52496,
+     "candidate": 0.52509,
+     "alpha": 100000.0,
+     "coef": [
+      0.0254
+     ]
+    },
+    "2020": {
+     "baseline": 0.53064,
+     "candidate": 0.53067,
+     "alpha": 100000.0,
+     "coef": [
+      0.0152
+     ]
+    },
+    "2021": {
+     "baseline": 0.55087,
+     "candidate": 0.5508,
+     "alpha": 100000.0,
+     "coef": [
+      0.0035
+     ]
+    },
+    "2022": {
+     "baseline": 0.53312,
+     "candidate": 0.53296,
+     "alpha": 100000.0,
+     "coef": [
+      0.0148
+     ]
+    },
+    "2023": {
+     "baseline": 0.54423,
+     "candidate": 0.5443,
+     "alpha": 100000.0,
+     "coef": [
+      0.0113
+     ]
+    },
+    "2024": {
+     "baseline": 0.54148,
+     "candidate": 0.54131,
+     "alpha": 100000.0,
+     "coef": [
+      0.007
+     ]
+    }
+   }
+  },
+  "decision": {
+   "adopted": false,
+   "status": "context only"
+  }
  }
 }

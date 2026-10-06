@@ -32,6 +32,30 @@ def sigma2() -> float:
     return json.loads(OUT.read_text())["sigma2_eff"]
 
 
+def sd_params() -> dict:
+    """with_sd / sigma2_eff / lam_sd for adjeff.fit."""
+    d = json.loads(OUT.read_text())
+    return {"with_sd": True, "sigma2_eff": d["sigma2_eff"], "lam_sd": d.get("lam_sd", None) or json.loads((PARAMS / "adjeff.json").read_text())["config"]["lam"]}
+
+
+def estimate_prior_var() -> dict:
+    """Prior variance of a team's efficiency margin before any games: tau2_em = E[(final - preseason)^2] + E[sd_final^2],
+    pooled over test seasons (preseason snapshots are fit on zero games). Per side (offense, defense) tau2 = tau2_em / 2;
+    the uncertainty uses lam_sd = sigma2 / tau2. One parameter chosen on pooled seasons (stated on Methodology)."""
+    R = pd.read_parquet(BT / "adjeff_ratings.parquet")
+    R = R[R.season.isin(list(SEASONS))].copy()
+    R["em"] = R.adj_off - R.adj_def
+    first, last = R.groupby("season").date.transform("min"), R.groupby("season").date.transform("max")
+    P, F = R[R.date == first].set_index(["season", "team_id"]), R[R.date == last].set_index(["season", "team_id"])
+    j = P[["em"]].join(F[["em", "em_sd"]], rsuffix="_f").dropna()
+    tau2_em = float(((j.em_f - j.em) ** 2).mean() + (j.em_sd ** 2).mean())  # em_sd here is the final snapshot's
+    out = json.loads(OUT.read_text())
+    out.update(tau2_em=round(tau2_em, 2), lam_sd=round(out["sigma2_eff"] / (tau2_em / 2), 3),
+               note_lam_sd="uncertainty-only penalty sigma2/tau2 (point ratings keep the prediction-tuned lam)")
+    OUT.write_text(json.dumps(out, indent=1))
+    return out
+
+
 def estimate() -> dict:
     prod = load_prod()
     cfg = prod["config"]
@@ -89,8 +113,12 @@ def validate() -> dict:
     R["gp_bin"] = pd.cut(R.n_games, [-1, 0, 3, 6, 10, 15, 20, 25, 30, 45], labels=["0", "1-3", "4-6", "7-10", "11-15", "16-20", "21-25", "26-30", "31+"])
     width = R.groupby("gp_bin", observed=True).em_sd.mean()
     out = json.loads(OUT.read_text())
+    P0 = R[R.date == R.groupby("season").date.transform("min")].set_index(["season", "team_id"])
+    F0 = R[R.date == R.groupby("season").date.transform("max")].set_index(["season", "team_id"])
+    j = P0[["em", "em_sd"]].join(F0[["em", "em_sd"]], rsuffix="_f").dropna()
+    rev_pre = {"observed_over_expected_variance": round(float(((j.em_f - j.em) ** 2).mean() / (j.em_sd ** 2 - j.em_sd_f ** 2).mean()), 3)}
     out["coverage_final_within_1sd"] = cov
-    out["revision_check"] = rev
+    out["revision_check"] = {"preseason": rev_pre, **rev}
     out["note_revision"] = ("The end-of-season rating contains the games the earlier rating used, so the plan's coverage test is biased "
                             "high. The calibrated check: the later revision (final - earlier) should have variance sd_earlier^2 - "
                             "sd_final^2, and 68% of revisions should fall within that sd.")
@@ -101,4 +129,4 @@ def validate() -> dict:
 
 
 if __name__ == "__main__":
-    print(json.dumps({"estimate": estimate, "validate": validate}[sys.argv[1]](), indent=1)[:1500])
+    print(json.dumps({"estimate": estimate, "validate": validate, "prior": estimate_prior_var}[sys.argv[1]](), indent=1)[:1500])

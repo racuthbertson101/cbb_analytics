@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Team, useJson, useMeta, useTeams } from "@/lib/data";
 import { teamColor } from "@/lib/color";
 import { fmtEff, fmtInt, fmtPct, fmtRate, fmtRating, fmtScore, seasonLabel } from "@/lib/format";
-import { cdf, interp, Pred, Preseason, RatingsFile, sigmaOf } from "@/lib/predict";
+import { cdf, interp, Pred, Preseason, RatingsFile, sigmaOf, Z80 } from "@/lib/predict";
 import { prettyDate, seasonOf } from "@/lib/util";
 import ShotChart, { Bins } from "./ShotChart";
 import Sparkline from "./Sparkline";
@@ -22,18 +22,21 @@ type Profile = {
   sys: Record<string, Pair>; res: { q: number[] | null; top50: [number, number]; best: [string, string, number] | null; worst: [string, string, number] | null };
   form: [string, string, string, string, number, number | null][];
   cons: { resid_sd: number | null; resid_sd_pc: number | null; upset_losses: [number, number | null, number]; upset_wins: [number, number | null, number] };
-  rot: { cols: string[]; players: (string | number | null)[][]; ht_in: number | null; exp_years: number | null; returning_min_share: number | null };
+  rot: { cols: string[]; players: (string | number | null)[][]; ht_in: number | null; exp_years: number | null; returning_min_share: number | null;
+    bench_min_share?: number | null; bench_impact?: number | null; star_dependence?: number | null; usage_hhi?: number | null };
 };
 type Profiles = { season: number; asof: string; teams: Record<string, Profile> };
 type HRow = [string, string, string, string, number, number, number | null];
 type History = { cols: string[]; rows: HRow[] };
 type Analogs = { grid_margin: number[]; grid_poss: number[]; cells: ([number, number, number, number, number] | null)[]; seasons: number[]; window: { margin: number; poss: number } };
 type AnalogGames = { cols: string[]; rows: (string | number)[][] };
-type MatchEval = { results: { per_feature: Record<string, { improvement: number; seasons_improved: number; passes: boolean }> } | null; adoption_rule: { of_seasons: number } };
-type Snap = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number; date?: string };
+type MatchEval = { results: { per_feature: Record<string, { improvement: number; seasons_improved: number; passes: boolean }> } | null; adoption_rule: { of_seasons: number };
+  player_test?: { results: { improvement: number; seasons_improved: number } | null; adoption_rule: { of_seasons: number } } };
+type Snap = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number; date?: string; sd?: (number | null)[] };
 type Out = {
   missing: false; poss: number; k: number; m: number; sa: number; sb: number; p: number; sd: number; lo: number; hi: number;
   parts: [string, number][]; sens: number[]; ratings: { oA: number; dA: number; oB: number; dB: number; tA: number; tB: number };
+  est: { lo: number; hi: number; sdm: number } | null;
 };
 
 const card = "card p-5";
@@ -50,7 +53,7 @@ function snapshot(R: RatingsFile | null | undefined, PRE: Preseason | null | und
   if (R) {
     let i = R.dates.length - 1;
     if (asof) { const k = R.dates.findIndex((d) => d > asof); i = k > 0 ? k - 1 : k === 0 ? 0 : i; }
-    return { teams: R.teams, off: R.off[i], def: R.def[i], tempo: R.tempo[i], mu: R.mu[i], hca: R.hca[i], date: R.dates[i] };
+    return { teams: R.teams, off: R.off[i], def: R.def[i], tempo: R.tempo[i], mu: R.mu[i], hca: R.hca[i], date: R.dates[i], sd: R.sd?.[i] };
   }
   return PRE ? { ...PRE } : null;
 }
@@ -104,7 +107,10 @@ export default function CompareView() {
     const ea = mu + oA + dB + adv, eb = mu + oB + dA - adv;
     const m = (ea - eb) * k;
     const prob = (mm: number) => interp(cdf(mm / sigmaOf(PP, poss)), PP.cal_x, PP.cal_y);
+    const sa_ = A.sd?.[i], sb_ = B.sd?.[j];
+    const sdm = sa_ != null && sb_ != null ? k * Math.sqrt(sa_ ** 2 + sb_ ** 2) : null; // margin sd from the rating posteriors
     return {
+      est: sdm == null ? null : { lo: prob(m - Z80 * sdm), hi: prob(m + Z80 * sdm), sdm },
       missing: false, poss, k, m, sa: ea * k, sb: eb * k, p: prob(m), sd: sigmaOf(PP, poss), lo: m + PP.q10, hi: m + PP.q90,
       parts: [["A offense", oA * k], ["B offense", -oB * k], ["A defense", -dA * k], ["B defense", dB * k], ["Home court", 2 * adv * k]],
       sens: [1, 0, -1].map((s) => prob(m + 2 * hca * k * (s - site))),
@@ -113,7 +119,7 @@ export default function CompareView() {
   }, [SA.snap, SB.snap, PP, a, b, site, season, seasonB]);
 
   const tag = (feature?: string) => {
-    const r = feature ? ME?.results?.per_feature[feature] : null;
+    const r = feature === "player" ? ME?.player_test?.results : feature ? ME?.results?.per_feature[feature] : null;
     return <ContextTag kind="context" title={r ? `Context only: tested out of sample, did not improve predictions (log loss change ${r.improvement > 0 ? "+" : ""}${r.improvement.toFixed(5)}; better in ${r.seasons_improved} of ${ME?.adoption_rule.of_seasons} seasons). See Methodology.` : "Shown for context; not part of the prediction."} />;
   };
   const nameA = ta?.short ?? "A", nameB = tb?.short ?? "B";
@@ -156,7 +162,7 @@ export default function CompareView() {
           <HistoryBlocks a={a} b={b} nameA={nameA} nameB={nameB} map={map} season={season} cross={cross} live={live} tagRest={tag("rest")} tag={tag()} />
           {pa && pb && (
             <>
-              <Rotation pa={pa} pb={pb} nameA={nameA} nameB={nameB} season={season} seasonB={seasonB} tag={tag()} />
+              <Rotation pa={pa} pb={pb} nameA={nameA} nameB={nameB} season={season} seasonB={seasonB} tag={tag("player")} />
               <Consistency pa={pa} pb={pb} nameA={nameA} nameB={nameB} tag={tag()} />
             </>
           )}
@@ -248,6 +254,11 @@ function PredictionBlock({ out, nameA, nameB, ca, cb, cross }: { out: Out; nameA
         <div><div className="num text-6xl font-semibold">{fmtScore(out.sb)}</div><div className="text-sm text-muted">{nameB}</div></div>
       </div>
       <div className="mt-4"><MatchupBar label="Win probability" a={out.p} b={1 - out.p} fmt={(x) => fmtPct(x, 1)} ca={ca} cb={cb} better="high" /></div>
+      {out.est && (
+        <p className="mt-1 text-center text-xs text-muted" title="From the posterior uncertainty of both teams' ratings (Methodology). It narrows as the season goes on.">
+          80% range of our estimate: <b className="text-ink">{nameA} {fmtPct(out.est.lo)}–{fmtPct(out.est.hi)}</b>. If our ratings are off by one sd, the margin moves to {nameA} {fmtRating(out.m - out.est.sdm)} or {fmtRating(out.m + out.est.sdm)}.
+        </p>
+      )}
       <MarginDist out={out} nameA={nameA} ca={ca} cb={cb} />
       <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs text-muted">
         <span>80% of results land in <b className="text-ink">{nameA} {fmtRating(out.lo, 0)} to {fmtRating(out.hi, 0)}</b></span>
@@ -606,17 +617,23 @@ function Rotation({ pa, pb, nameA, nameB, season, seasonB, tag }: { pa: Profile;
   const panel = (p: Profile, name: string, s: number) => (
     <div>
       <div className="mb-1 text-xs text-muted">{name}: minutes-weighted height {p.rot.ht_in != null ? `${Math.floor(p.rot.ht_in / 12)}′${fmtEff(p.rot.ht_in % 12)}″` : "–"} · experience {p.rot.exp_years != null ? `${fmtEff(p.rot.exp_years)} yrs` : "–"} · returning minutes {fmtPct(p.rot.returning_min_share)}</div>
-      <table className="dense"><thead><tr><th className="l">Player</th><th className="l">Class</th><th className="l">Ht</th><th>MPG</th><th>USG</th><th>TS%</th></tr></thead>
+      <table className="dense"><thead><tr><th className="l">Player</th><th className="l">Class</th><th className="l">Ht</th><th>MPG</th><th>USG</th><th>TS%</th><th title="Impact v2 (experimental), points per 100 possessions vs an average D-I player">Impact</th></tr></thead>
         <tbody>{p.rot.players.map((r) => (
           <tr key={String(r[0])}><td className="l"><Link className="hover:text-accent" href={`/player/?id=${r[0]}&season=${s}`}>{r[1]}</Link></td>
-            <td className="l text-muted">{r[2] ?? ""}</td><td className="l text-muted">{r[3] ?? ""}</td><td>{fmtEff(r[4] as number)}</td><td>{fmtEff(r[5] as number)}</td><td>{fmtRate(r[6] == null ? null : (r[6] as number) * 100)}</td></tr>))}</tbody></table>
+            <td className="l text-muted">{r[2] ?? ""}</td><td className="l text-muted">{r[3] ?? ""}</td><td>{fmtEff(r[4] as number)}</td><td>{fmtEff(r[5] as number)}</td><td>{fmtRate(r[6] == null ? null : (r[6] as number) * 100)}</td><td>{fmtRating(r[7] as number | null)}</td></tr>))}</tbody></table>
+      <div className="mt-2 grid grid-cols-2 gap-x-4 text-xs text-muted md:grid-cols-4">
+        <span>Bench minutes <b className="text-ink">{fmtPct(p.rot.bench_min_share)}</b></span>
+        <span>Bench impact <b className="text-ink">{fmtRating(p.rot.bench_impact ?? null)}</b></span>
+        <span title="Top player's usage share × his minutes share">Star dependence <b className="text-ink">{fmtPct(p.rot.star_dependence, 1)}</b></span>
+        <span title="Sum of squared usage shares: higher = offense more concentrated">Usage concentration <b className="text-ink">{fmtEff(p.rot.usage_hhi == null ? null : p.rot.usage_hhi * 100)}</b></span>
+      </div>
     </div>
   );
   return (
     <div className={`${card} mb-6`}>
       <h2 className={h2}>Rotation and personnel{tag}</h2>
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">{panel(pa, nameA, season)}{panel(pb, nameB, seasonB)}</div>
-      <p className="mt-3 text-xs text-faint">Plain facts only. Personnel impact (player ratings, depth, star dependence) arrives with the play-by-play RAPM ratings. Returning minutes = share of this season&apos;s minutes played by players who were on the team last season. Height and class come from rosters (2024-25 on).</p>
+      <p className="mt-3 text-xs text-faint">Impact is v2 (experimental: RAPM with a box prior from 2024-25, box estimate before). Bench = players ranked 6th or lower by minutes. Whether a star-dependent team suffers against a deep defensive bench was tested out of sample and does not improve predictions, so these are context only. Returning minutes = share of this season&apos;s minutes played by players who were on the team last season. Height and class come from rosters (2024-25 on).</p>
     </div>
   );
 }

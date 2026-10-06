@@ -146,3 +146,72 @@ def run() -> dict:
 if __name__ == "__main__":
     r = run()
     print(r["decision"])
+
+
+# ---------------- Phase 5c.3: player-feature test (pre-registered in matchup_eval.json["player_test"]) ----------------
+def player_team_dates(y: int) -> pd.DataFrame:
+    """Per team and game date: star dependence and bench defense from games on EARLIER dates (previous-season v2 for quality)."""
+    pg = pd.read_parquet(table_path("player_games", y))
+    pg = pg[~pg.did_not_play & (pg.minutes > 0)]
+    pg = pg.assign(use=pg.fga + 0.44 * pg.fta + pg.tov)
+    day = pg.groupby(["team_id", "game_date", "athlete_id"])[["minutes", "use"]].sum().reset_index()
+    prev = table_path("player_impacts_v2", y - 1)
+    vdef = pd.read_parquet(prev).sort_values("min", ascending=False).drop_duplicates("athlete_id").set_index("athlete_id")["def"] if prev.exists() else pd.Series(dtype=float)
+    rows = []
+    for tid, t in day.groupby("team_id"):
+        M = t.pivot_table(index="game_date", columns="athlete_id", values="minutes", fill_value=0).sort_index()
+        U = t.pivot_table(index="game_date", columns="athlete_id", values="use", fill_value=0).reindex_like(M).fillna(0)
+        cm, cu = M.cumsum().shift(1).fillna(0), U.cumsum().shift(1).fillna(0)  # totals over EARLIER dates
+        games_before = np.arange(len(M))
+        for k, d in enumerate(M.index):
+            if games_before[k] < MIN_GAMES:
+                rows.append((tid, d, np.nan, np.nan))
+                continue
+            mins, use = cm.loc[d], cu.loc[d]
+            ms, us = mins / mins.sum() * 5, use / max(use.sum(), 1e-9)   # minutes share sums to 5; usage share sums to 1
+            star = float((us * ms / 5).max())                             # top player's usage share x his minutes share
+            bench = ms.sort_values(ascending=False).iloc[5:]
+            bench = bench[bench > 0]
+            bdef = float((bench * vdef.reindex(bench.index).fillna(0.0)).sum())
+            rows.append((tid, d, star, bdef))
+    return pd.DataFrame(rows, columns=["team_id", "game_date", "star", "bench_def"])
+
+
+def player_features(y: int, base: pd.DataFrame) -> pd.DataFrame:
+    st = player_team_dates(y)
+    for c in ("star", "bench_def"):  # z against the teams playing on that date
+        g = st.groupby("game_date")[c]
+        st["z_" + c] = ((st[c] - g.transform("mean")) / g.transform("std").replace(0, np.nan)).fillna(0.0)
+    gm = pd.read_parquet(table_path("games", y))[["game_id", "game_date", "home_id", "away_id"]]
+    d = base.merge(gm, on="game_id")
+    h = st.rename(columns={"team_id": "home_id", "z_star": "h_star", "z_bench_def": "h_bdef"})[["home_id", "game_date", "h_star", "h_bdef"]]
+    a = st.rename(columns={"team_id": "away_id", "z_star": "a_star", "z_bench_def": "a_bdef"})[["away_id", "game_date", "a_star", "a_bdef"]]
+    d = d.merge(h, on=["home_id", "game_date"], how="left").merge(a, on=["away_id", "game_date"], how="left").fillna({"h_star": 0, "h_bdef": 0, "a_star": 0, "a_bdef": 0})
+    d["star_x_depth"] = d.h_star * d.a_bdef - d.a_star * d.h_bdef
+    return d
+
+
+def run_player() -> dict:
+    prm = json.loads((PARAMS / "matchup_eval.json").read_text())
+    pt = prm["player_test"]
+    rule = pt["adoption_rule"]
+    prod = load_prod()
+    cal = Predictor.__new__(Predictor)
+    cal.sig, cal.gx, cal.gy = prod["sigma_coef"], np.array(prod["calibration_grid_x"]), np.array(prod["calibration_grid_y"])
+    fta = json.loads((PARAMS / "possessions.json").read_text())["fta_coef"]
+    lo, hi = pt["test_seasons"]
+    D = pd.concat([player_features(y, features(y, fta)) for y in range(2011, hi + 1)], ignore_index=True)
+    D = D[np.isfinite(D.star_x_depth) & D.resid.notna() & (D.margin != 0)]
+    global TEST
+    keep = TEST
+    TEST = (lo, hi)
+    try:
+        r = evaluate(D, ["star_x_depth"], cal._win_prob)
+    finally:
+        TEST = keep
+    r["passes"] = bool(r["improvement"] >= rule["pooled_log_loss_improvement_at_least"] and r["seasons_improved"] >= rule["seasons_improved_at_least"])
+    pt["results"] = {"n_games": int(len(D[D.season.between(lo, hi)])), **{k: v for k, v in r.items() if k != "by_season"}, "by_season": r["by_season"]}
+    pt["decision"] = {"adopted": r["passes"], "status": "adopted" if r["passes"] else "context only"}
+    pt["status"] = "evaluated"
+    (PARAMS / "matchup_eval.json").write_text(json.dumps(prm, indent=1))
+    return pt

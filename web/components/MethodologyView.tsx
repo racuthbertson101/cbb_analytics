@@ -39,7 +39,10 @@ export default function MethodologyView() {
   const wt = useJson<{ weights: Record<string, number>; stakes_weights: Record<string, number> }>("params/watchability.json").data;
   const mx = useJson<{ registered: string; adoption_rule: { pooled_log_loss_improvement_at_least: number; seasons_improved_at_least: number; of_seasons: number };
     features: Record<string, string>; results: { n_games: number; per_feature: Record<string, { improvement: number; seasons_improved: number; passes: boolean }> } | null;
-    decision: { adopted: string[]; status: string } | null }>("params/matchup_eval.json").data;
+    decision: { adopted: string[]; status: string } | null;
+    player_test?: { registered: string; feature: string; adoption_rule: { seasons_improved_at_least: number; of_seasons: number }; results: { n_games: number; improvement: number; seasons_improved: number; passes: boolean } | null } }>("params/matchup_eval.json").data;
+  const rs = useJson<{ sigma_eff: number; mean_em_sd_by_games_played: Record<string, number>; coverage_final_within_1sd: Record<string, { within_1sd: number }>;
+    revision_check: Record<string, { observed_over_expected_variance: number; within_1sd_of_revision: number }> }>("params/rating_sd.json").data;
   const ig = useJson<{ test_seasons: number[]; pooled: { n_states: number; log_loss: number }; by_season: Record<string, { log_loss: number; log_loss_pregame_only: number; log_loss_margin_only: number }>;
     calibration_by_time_left: { bucket: string; n: number; mean_pred: number; observed: number; ece: number; worst_bin_gap: number }[] }>("params/ingame.json").data;
   const bt = useJson<BT>("params/backtest.json").data;
@@ -88,6 +91,24 @@ export default function MethodologyView() {
           </table>
         )}
         <p>Predicted score = predicted possessions × predicted efficiency for each side. Win probability = normal CDF of predicted margin over σ, then calibrated (see below). The 80% interval is an outcome interval on the margin: 80% of historical results landed within {prod ? `${prod.margin_residual_quantiles["0.1"].toFixed(1)} to +${prod.margin_residual_quantiles["0.9"].toFixed(1)}` : "…"} points of the prediction. It describes game-to-game randomness, not uncertainty in the ratings. There is no interval on the win probability itself yet: one based on rating uncertainty is planned and will be shown only after it is validated.</p>
+      </Section>
+
+      <Section title="How sure are the ratings? (80% range of our estimate)">
+        <p>Each rating is an estimate. Read as a Bayesian model, the ridge regression gives a posterior variance for every team&apos;s efficiency margin: noise variance × (XᵀWX + penalty)⁻¹. The noise ({rs ? `${rs.sigma_eff.toFixed(1)} points per 100 possessions per team-game` : "…"}) is estimated from end-of-season residuals. The prior variance comes from how far preseason ratings actually moved by season&apos;s end; that one constant was chosen on pooled seasons. It replaces the prediction-tuned penalty in this calculation only, so the point ratings are unchanged. For a game, the margin&apos;s standard deviation combines both teams&apos; (possessions/100 × √(sd₁² + sd₂²)), and the &ldquo;80% range of our estimate&rdquo; is the calibrated win probability at the predicted margin ± 1.28 of those standard deviations. This is different from the 80% outcome interval: that one is about game-to-game randomness, this one about how well we know the teams.</p>
+        {rs && (<>
+          <div className="h-44">
+            <ResponsiveContainer>
+              <LineChart data={Object.entries(rs.mean_em_sd_by_games_played).map(([k, v]) => ({ k, v }))} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                <CartesianGrid stroke="#232c3b" strokeDasharray="3 3" />
+                <XAxis dataKey="k" tick={{ fontSize: 11, fill: "#8b96aa" }} label={{ value: "games played", position: "insideBottomRight", offset: -2, fontSize: 11, fill: "#8b96aa" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#8b96aa" }} width={34} />
+                <Tooltip contentStyle={{ background: "#10151d", border: "1px solid #232c3b", fontSize: 12 }} formatter={(v) => [`${Number(v).toFixed(1)} pts/100`, "rating sd"]} />
+                <Line dataKey="v" stroke="#f2b544" strokeWidth={2} dot />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-xs">Average standard deviation of a team&apos;s efficiency margin by games played (walk-forward). Check: later revisions of a rating should have variance sd(earlier)² − sd(final)². Observed / expected: {Object.entries(rs.revision_check).map(([k, v]) => `${k} ${v.observed_over_expected_variance.toFixed(2)}`).join(", ")}, with {Object.values(rs.revision_check).map((v) => `${(v.within_1sd_of_revision * 100).toFixed(0)}%`).join(", ")} within one sd (68% if exact). Values near 1 mean the ranges are about right.</p>
+        </>)}
       </Section>
 
       <Section title="Backtest (walk-forward, no leakage)">
@@ -168,6 +189,7 @@ export default function MethodologyView() {
           <table className="dense prose"><thead><tr><th className="l">Feature</th><th>Log loss change</th><th>Seasons improved</th><th className="l">Result</th></tr></thead>
             <tbody>{Object.entries(mx.results.per_feature).map(([k, r]) => (
               <tr key={k}><td className="l">{k === "joint" ? "all six together" : k.replace("_", " ")}</td><td>{r.improvement > 0 ? "+" : ""}{r.improvement.toFixed(5)}</td><td>{r.seasons_improved} / {mx.adoption_rule.of_seasons}</td><td className="l">{r.passes ? "adopted" : "context only"}</td></tr>))}</tbody></table>
+          {mx.player_test?.results && <p>Player-level follow-up (pre-registered {mx.player_test.registered}): does a star-dependent team suffer more against a deep defensive bench (season-to-date roles, previous-season impact v2)? Log loss change {mx.player_test.results.improvement > 0 ? "+" : ""}{mx.player_test.results.improvement.toFixed(5)}, better in {mx.player_test.results.seasons_improved} of {mx.player_test.adoption_rule.of_seasons} seasons (needed {mx.player_test.adoption_rule.seasons_improved_at_least}): {mx.player_test.results.passes ? "adopted" : "context only"}.</p>}
           <p>Result: {mx.decision?.adopted.length ? `adopted: ${mx.decision.adopted.join(", ")}` : "none passed, so every style comparison on the Compare page is labeled context only"} ({mx.results.n_games.toLocaleString()} games; positive = better than the ratings alone).</p>
         </>)}
       </Section>

@@ -215,6 +215,7 @@ def main(argv=None):
             fp = _predict_table(tbl, prod, cal, up.home_id.values, up.away_id.values, up.neutral_site.values)
             new = pd.DataFrame({"game_id": up.game_id.values, "game_date": up.game_date.astype(str).values, "home_id": up.home_id.values, "away_id": up.away_id.values,
                                 "neutral": up.neutral_site.values, "pm": fp.pm.values, "ph": fp.ph.values, "pa": fp.pa.values, "p": fp.p.values,
+                                **({"p_est_lo": fp.pel.values, "p_est_hi": fp.peh.values} if "pel" in fp else {}),
                                 "model_version": "adjeff-v1"})
             # a replay/rehearsal of a past date is stamped at that date's scheduled run time, so tip-off ordering stays real
             made_at = datetime.now(timezone.utc).isoformat() if a.today is None else f"{today}T07:30:00+00:00"

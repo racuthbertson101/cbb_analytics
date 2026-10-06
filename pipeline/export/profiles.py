@@ -109,6 +109,8 @@ def build_profiles(t: dict, asof: pd.Timestamp, fta_coef: float, win_prob) -> di
                 sys_vals[k] = (vals, rk)
         q = {k: pd.Series(sysd[k][i], index=sysd["teams"]) for k in ("q1w", "q1l", "q2w", "q2l", "q3w", "q3l", "q4w", "q4l") if k in sysd}
     players, prev, ro = t["players"], t.get("players_prev"), t.get("rosters")
+    v2 = t.get("impacts_v2")
+    v2net = v2.drop_duplicates(["team_id", "athlete_id"]).set_index(["team_id", "athlete_id"]).net if v2 is not None else None
     mix = t.get("shot_mix")
     out = {}
     for tid in sorted(t["d1"]):
@@ -129,9 +131,24 @@ def build_profiles(t: dict, asof: pd.Timestamp, fta_coef: float, win_prob) -> di
             ri = rr.loc[r.athlete_id] if rr is not None and r.athlete_id in rr.index else None
             if isinstance(ri, pd.DataFrame):
                 ri = ri.iloc[0]
+            imp = None if v2net is None else v2net.get((tid, r.athlete_id))
             rot.append([r.athlete_id, r.name, None if ri is None else ri.experience_display_value, None if ri is None else ri.height,
-                        _num(r.mpg, 1), _num(r.usg, 1), _num(r.ts, 3)])
+                        _num(r.mpg, 1), _num(r.usg, 1), _num(r.ts, 3), _num(imp, 1)])
         tot_min = pl["min"].sum()
+        # personnel (Phase 5c.3; context only per the pre-registered player test). DEFINITIONS: bench = players ranked 6th or
+        # lower by minutes; usage = FGA + 0.44 FTA + TOV; star dependence = max over players of usage share x minutes share
+        ms = pl["min"] / max(tot_min, 1e-9) * 5
+        use = pl.fga + 0.44 * pl.fta + pl.tov
+        us = use / max(use.sum(), 1e-9)
+        bench = pl.iloc[5:]
+        bnet = None
+        if v2net is not None and len(bench):
+            bv = pd.Series([v2net.get((tid, a)) for a in bench.athlete_id], index=bench.index, dtype=float)
+            bw = ms.loc[bench.index]
+            bnet = _num((bv * bw).sum() / bw[bv.notna()].sum(), 2) if bv.notna().any() else None
+        personnel = {"bench_min_share": _num(ms.iloc[5:].sum() / 5, 3), "bench_impact": bnet,
+                     "star_dependence": _num(float((us * ms / 5).max()), 3) if tot_min > 0 else None,
+                     "usage_hhi": _num(float((us ** 2).sum()), 3) if tot_min > 0 else None}
         ret = None
         if prev is not None and tot_min > 0:
             back = set(prev[prev.team_id == tid].athlete_id)
@@ -159,7 +176,8 @@ def build_profiles(t: dict, asof: pd.Timestamp, fta_coef: float, win_prob) -> di
             "cons": {"resid_sd": _num(rsd.get(tid), 2), "resid_sd_pc": _num(rsd_pc.get(tid), 3),
                      "upset_losses": [int((~fav.won).sum()), _num((1 - fav.p).sum(), 1), int(len(fav))],
                      "upset_wins": [int(dog.won.sum()), _num(dog.p.sum(), 1), int(len(dog))]},
-            "rot": {"cols": ["id", "name", "cls", "ht", "mpg", "usg", "ts"], "players": rot, "ht_in": ht, "exp_years": ex, "returning_min_share": ret},
+            "rot": {"cols": ["id", "name", "cls", "ht", "mpg", "usg", "ts", "imp"], "players": rot, "ht_in": ht, "exp_years": ex, "returning_min_share": ret,
+                    **personnel},
         }
     return out
 
@@ -220,10 +238,11 @@ def export_profiles(seasons=None):
         sysp = OUT / "systems" / f"{y}.json"
         t = {"team_games": pd.read_parquet(table_path("team_games", y)), "games": g, "preds": preds, "ratings": ratings,
              "d1": set(pd.read_parquet(table_path("team_seasons", y)).query("is_d1").team_id),
-             "players": pd.read_parquet(table_path("player_seasons", y)) if table_path("player_seasons", y).exists() else pd.DataFrame(columns=["team_id", "athlete_id", "min", "name", "mpg", "usg", "ts"]),
+             "players": pd.read_parquet(table_path("player_seasons", y)) if table_path("player_seasons", y).exists() else pd.DataFrame(columns=["team_id", "athlete_id", "min", "name", "mpg", "usg", "ts", "fga", "fta", "tov"]),
              "players_prev": pd.read_parquet(table_path("player_seasons", y - 1)) if table_path("player_seasons", y - 1).exists() else None,
              "rosters": pd.read_parquet(table_path("rosters", y)) if table_path("rosters", y).exists() else None,
-             "systems": json.loads(sysp.read_text()) if sysp.exists() else None, "shot_mix": shot_mix(y, g)}
+             "systems": json.loads(sysp.read_text()) if sysp.exists() else None, "shot_mix": shot_mix(y, g),
+             "impacts_v2": pd.read_parquet(table_path("player_impacts_v2", y)) if table_path("player_impacts_v2", y).exists() else None}
         asof = g[g.completed].game_date.max() + pd.Timedelta(days=1)
         prof = build_profiles(t, asof, fta, cal._win_prob)
         write(f"profiles/{y}.json", {"v": V, "season": y, "asof": str(asof.date()), "teams": prof})

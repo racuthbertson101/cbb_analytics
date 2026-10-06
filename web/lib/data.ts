@@ -39,7 +39,7 @@ export type Team = { id: string; name: string; short: string; abbr: string; loc:
 export type Meta = { version: number; current_season: number; upcoming_season: number | null; shot_seasons?: number[]; limits?: { playerlog_first?: number; teamlog_first?: number; gamedetail_first?: number; gameshots_first?: number }; upcoming_first_date: string | null; seasons: number[]; last_game_date: string; default_asof: string; current_last_date: string; season_first_date: string; generated: string };
 export type Game = {
   id: string; d: string; a: string; h: string; as: number | null; hs: number | null; n: boolean; t: string; cg: boolean; ok: boolean;
-  pm: number | null; pp: number | null; p: number | null; ph: number | null; pa: number | null;
+  pm: number | null; pp: number | null; p: number | null; ph: number | null; pa: number | null; pel?: number | null; peh?: number | null;
   ar: number | null; hr: number | null; d1: boolean; note: string | null; w: number | null; wc: (number | null)[] | null;
   dt?: string | null; v?: string | null; att?: number | null; tv?: string | null; an?: string | null; hn?: string | null;
 };

@@ -66,7 +66,7 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 4a.1-4a.4 profiles (leakage-tested), team histories, analogs; matchup test pre-registered (ec3125e) and run: nothing adopted, all style features context only (Methodology table)
   - [x] 4b.1 Compare rebuilt (17 sections, ContextTags from matchup_eval.json, GameLinks, cross-season hypothetical, as-of in season)
   - Verified: pytest 257 passed; site 280.2 MB; 56/56 screenshot loads clean, 792 linked scores; first load ~0.5 MB data gzipped (2.2 MB raw)
-- [ ] Phase 5: RAPM impact, star power, estimate interval
+- [x] Phase 5: RAPM impact, star power, estimate interval
   - [x] 5a.1 Stints from substitutions (2025-26: 99.1% of D-I games, poss within 3% in 98%; substitutions do not exist before 2024-25)
   - [x] 5a.2 RAPM (lambda walk-forward; split-half 0.46; partial next-season 0.27; face valid) in params/rapm.json
   - [x] 5b.1 Impact v2 (RAPM + box prior, team-consistent): replaces v1 on the site; smell gate fails only on 2025-26 center mean (+2.40 vs 2.0), so it stays "experimental"
@@ -74,6 +74,10 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 5b.3 Star power on v2; watchability vs national TV 0.46, attendance 0.53 (params/watchability_validation.json, Methodology)
   - [x] 5b.4 Label kept (gate failed); v2 shown on Player, Team, Players pages
   - Verified 2026-10-05: pytest 261 passed, next build ok, 56/56 screenshot loads clean; Iowa/Florida/Stirtz/Players reviewed
-  - [ ] 5c estimate band, Compare player gate <- NEXT
-- [ ] Phase 6: Modeling cleanup and conference fixes
+  - [x] 5c.1 Rating uncertainty (ridge posterior; data-estimated prior variance; revisions calibrated 0.97-1.10)
+  - [x] 5c.2 80% range of our estimate in exports, log schema 3 (old hashes kept), Today, Game, Compare, Methodology chart
+  - [x] 5c.3 Compare player gate: v2 impact, depth, star dependence; player matchup test pre-registered and run: context only
+  - Verified 2026-10-05: pytest 264 passed, next build ok, 56/56 screenshot loads clean
+- [x] Phase 5 complete (2026-10-05)
+- [ ] Phase 6: Modeling cleanup and conference fixes <- NEXT (6b Big Ten tiebreaker before ~Jan 10)
 - [ ] Phase 7: Design pass

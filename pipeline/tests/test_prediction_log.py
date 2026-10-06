@@ -67,3 +67,19 @@ def test_scores_last_prediction_before_tipoff(tmp_path):
 def test_no_win_probability_band_in_log_schema():
     """AUDIT M-1: outcome quantiles pushed through the CDF are not an interval on the probability; it must not be logged."""
     assert not {"plo", "phi", "win_prob_lo", "win_prob_hi"} & set(log.FIELDS)
+
+
+def test_schema_bump_keeps_old_hashes(tmp_path):
+    """Phase 5c.2: rows logged before p_est_lo/p_est_hi existed still verify after new rows carry them."""
+    log.append(_rows(["a", "b"]), "2027-01-03T07:30:00+00:00", tmp_path)          # schema 2 rows
+    old_head = json.loads((tmp_path / "HEAD.json").read_text())["last_hash"]
+    new = _rows(["a", "b"]).assign(p_est_lo=[0.51, 0.55], p_est_hi=[0.68, 0.71])
+    log.append(new, "2027-01-04T07:30:00+00:00", tmp_path)                         # schema 3 rows
+    assert log.verify(tmp_path)
+    df = log.read(tmp_path)
+    assert df.p_est_lo.isna().sum() == 2 and df.p_est_lo.notna().sum() == 2
+    first = log.read(tmp_path).iloc[:2]
+    assert first.row_hash.iloc[-1] == old_head                                      # old rows' hashes unchanged
+    f = tmp_path / "log" / "2027" / "01-04.csv"
+    f.write_text(f.read_text().replace("0.55,", "0.95,", 1))                        # tampering with a new field is caught
+    assert not log.verify(tmp_path)

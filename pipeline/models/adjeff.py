@@ -163,7 +163,11 @@ def fit(sd: SeasonData, n: int, asof_day: int, params: dict) -> Ratings:
         if params.get("with_sd"):
             # Gaussian-prior reading of the ridge: posterior Var(beta) = sigma2 * A^-1, with sigma2 the per-row efficiency noise
             # (fitted constant, pipeline/params/rating_sd.json). Var(o_i - d_i) from the 2x2 block of team i.
-            Ai = np.linalg.inv(A)
+            # the uncertainty uses a prior variance estimated from data (rating_sd.json lam_sd = sigma2 / tau2), not the
+            # point-estimate penalty lam (tuned for prediction): A_sd = A + (lam_sd - lam) on the team columns
+            A_sd = A.copy()
+            A_sd[np.arange(2 * N), np.arange(2 * N)] += params.get("lam_sd", lam) - lam
+            Ai = np.linalg.inv(A_sd)
             ii = np.arange(N)
             var_em = Ai[ii, ii] + Ai[N + ii, N + ii] - 2 * Ai[ii, N + ii]
             em_sd = np.sqrt(np.maximum(var_em, 0) * params["sigma2_eff"])

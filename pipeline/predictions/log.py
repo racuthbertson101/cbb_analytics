@@ -24,15 +24,22 @@ from pipeline.warehouse.paths import ROOT
 
 DIR = Path(os.environ["CBB_PREDICTION_LOG"]) if os.environ.get("CBB_PREDICTION_LOG") else ROOT / "predictions"
 FIELDS = ["game_id", "made_at", "game_date", "home_id", "away_id", "neutral", "pm", "ph", "pa", "p", "model_version"]
+# schema 3 (Phase 5c.2): the 80% range of our estimate of p. Optional: a row without them (schema 2) hashes exactly as before,
+# so the chain verifies across the schema bump.
+OPTIONAL = ["p_est_lo", "p_est_hi"]
 STR = ["game_id", "made_at", "game_date", "home_id", "away_id", "model_version"]
 DECIMALS = {"pm": 2, "ph": 2, "pa": 2, "p": 4}  # DEFINITION: stored precision; rounding first makes CSV round trips hash-stable
-SCHEMA = 2  # 1 = the old parquet log with plo/phi (never had live rows); 2 = git CSV log
+SCHEMA = 3  # 1 = old parquet log (never had live rows); 2 = git CSV log; 3 = adds optional p_est_lo/p_est_hi
 
 
 def _canon(r: dict) -> dict:
     out = {k: str(r[k]) for k in STR}
     out["neutral"] = bool(r["neutral"]) if not isinstance(r["neutral"], str) else r["neutral"] == "True"
     out.update({k: round(float(r[k]), d) for k, d in DECIMALS.items()})
+    for k in OPTIONAL:  # only when present: older rows keep their original payload and hash
+        v = r.get(k)
+        if v is not None and v == v and v != "":
+            out[k] = round(float(v), 4)
     return out
 
 
@@ -72,13 +79,17 @@ def append(new: pd.DataFrame, made_at: str, log_dir: Path | None = None) -> int:
         return 0
     head = _head(d) or {"rows": 0, "last_hash": "genesis"}
     prev, rows = head["last_hash"], []
-    for r in new[FIELDS].to_dict("records"):
+    cols = FIELDS + [k for k in OPTIONAL if k in new]
+    for r in new[cols].to_dict("records"):
         c = _canon(r)
         prev = _hash(prev, c)
         rows.append({**c, "row_hash": prev})
     f = d / "log" / day[:4] / f"{day[5:]}.csv"
     f.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=FIELDS + ["row_hash"]).to_csv(f, mode="a", header=not f.exists(), index=False)
+    cols_out = FIELDS + [k for k in OPTIONAL if any(k in x for x in rows)] + ["row_hash"]
+    if f.exists():  # keep the day file's header; a same-day re-run cannot add columns mid-file
+        cols_out = list(pd.read_csv(f, nrows=0).columns)
+    pd.DataFrame(rows).reindex(columns=cols_out).to_csv(f, mode="a", header=not f.exists(), index=False)
     (d / "HEAD.json").write_text(json.dumps({"rows": head["rows"] + len(rows), "last_hash": prev, "updated": made_at, "schema": SCHEMA}, indent=1))
     return len(rows)
 

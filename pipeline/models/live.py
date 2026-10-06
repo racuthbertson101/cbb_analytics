@@ -34,9 +34,9 @@ def fit_season(season: int, G: pd.DataFrame | None = None, asof=None):
     sub.G, sub.seasons, sub.sd = ctx.G, prior_seasons, {y: ctx.sd[y] for y in prior_seasons}
     fin = finals_no_prior(sub, cfg)
     prior = build_prior(ctx, fin, season, prod["prior_coefs_current"])
-    from .rating_sd import sigma2
+    from .rating_sd import sd_params
 
-    prior = {**prior, "with_sd": True, "sigma2_eff": sigma2()}
+    prior = {**prior, **sd_params()}  # Phase 5c: record rating uncertainty with each snapshot
     sd = ctx.sd[season]
     rat = []
     if len(sd.date) == 0:

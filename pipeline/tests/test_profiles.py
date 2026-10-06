@@ -20,7 +20,7 @@ def _tables():
     ratings["adj_off"] += np.arange(len(ratings)) % 17  # any fixed as-of ratings (input, not derived from games)
     return {"team_games": tg, "games": g, "preds": preds, "ratings": ratings,
             "d1": set(pd.read_parquet(table_path("team_seasons", 2026)).query("is_d1").team_id),
-            "players": pd.DataFrame(columns=["team_id", "athlete_id", "min", "name", "mpg", "usg", "ts"])}
+            "players": pd.DataFrame(columns=["team_id", "athlete_id", "min", "name", "mpg", "usg", "ts", "fga", "fta", "tov"])}
 
 
 def _prob(m, poss):

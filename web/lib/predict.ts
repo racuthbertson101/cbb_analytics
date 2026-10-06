@@ -1,7 +1,9 @@
 /** Client-side prediction engine shared by Compare and Game (same formulas as pipeline/models/production.py). */
 export type Pred = { sigma_coef: number[]; cal_x: number[]; cal_y: number[]; q10: number; q90: number; score_q10: number; score_q90: number };
-export type RatingsFile = { teams: string[]; dates: string[]; off: (number | null)[][]; def: (number | null)[][]; tempo: (number | null)[][]; mu: number[]; hca: number[] };
-export type Preseason = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number };
+export type RatingsFile = { teams: string[]; dates: string[]; off: (number | null)[][]; def: (number | null)[][]; tempo: (number | null)[][]; mu: number[]; hca: number[]; sd?: (number | null)[][] };
+export type Preseason = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number; sd?: (number | null)[] };
+/** DEFINITION: half-width of a central 80% normal interval in sd units. */
+export const Z80 = 1.2816;
 export type Snapshot = { teams: string[]; off: (number | null)[]; def: (number | null)[]; tempo: (number | null)[]; mu: number; hca: number };
 
 const erf = (x: number) => {
