@@ -1,0 +1,65 @@
+{
+ "model": "ridge RAPM on lineup stints, offense and defense per player plus a home term, possession-weighted",
+ "lambda_grid": [
+  250,
+  500,
+  1000,
+  2000,
+  4000,
+  8000
+ ],
+ "seasons": {
+  "2025": {
+   "lambda": 4000,
+   "holdout_mse_by_lambda": {
+    "250": 5446.28,
+    "500": 5421.53,
+    "1000": 5407.84,
+    "2000": 5400.98,
+    "4000": 5399.77,
+    "8000": 5402.16
+   },
+   "rows": 87455,
+   "games": 1472,
+   "players": 4366,
+   "home_per100": 2.97,
+   "split_half_corr": {
+    "n": 97,
+    "net": 0.282,
+    "off": 0.256,
+    "def": 0.096
+   },
+   "sd_net_1000poss": 0.87
+  },
+  "2026": {
+   "lambda": 2000,
+   "holdout_mse_by_lambda": {
+    "250": 5599.47,
+    "500": 5581.41,
+    "1000": 5572.66,
+    "2000": 5571.65,
+    "4000": 5576.11,
+    "8000": 5584.38
+   },
+   "rows": 378133,
+   "games": 6124,
+   "players": 9191,
+   "home_per100": 4.98,
+   "split_half_corr": {
+    "n": 2869,
+    "net": 0.457,
+    "off": 0.404,
+    "def": 0.335
+   },
+   "sd_net_1000poss": 2.13
+  }
+ },
+ "next_season_corr": {
+  "2025->2026": {
+   "n": 1082,
+   "net": 0.268,
+   "off": 0.288,
+   "def": 0.169
+  }
+ }
+}
