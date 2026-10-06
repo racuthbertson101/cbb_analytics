@@ -39,7 +39,7 @@ uv run python -m pipeline.nightly --today 2026-11-02 --rehearsal --rehearsal-res
 - [x] **Deleted log** (rehearsal `predictions/log/` removed, HEAD kept): `check()` gives "log has 0 rows but HEAD says 955". The next night exits 1: "refusing to append to a log that fails verification". Also `test_missing_or_shortened_log_fails`.
 - [x] **Interrupted release upload** (injected uploader failing on the 3rd file, real local files): two assets went up under new versioned names, the manifest was never uploaded, and the previously published manifest and its assets were untouched. Also `test_failure_mid_upload_leaves_previous_manifest`.
 
-## 4. Owner, around Oct 20: rehearsal dispatch on GitHub
+## 4. Rehearsal dispatch on GitHub (done 2026-10-06, run 37411109630)
 
 ```bash
 gh workflow run nightly.yml -f rehearsal=true -f today=2026-02-15 -f nsim=3000
@@ -47,17 +47,18 @@ gh run watch $(gh run list --workflow nightly.yml --limit 1 --json databaseId -q
 gh run download $(gh run list --workflow nightly.yml --limit 1 --json databaseId -q '.[0].databaseId') -n rehearsal-2026-02-15 -D rehearsal-out
 ```
 
-- [ ] Run green; the `deploy` and `sync` jobs show as skipped.
-- [ ] The artifact contains `web/out/index.html` and `data/rehearsal/predictions/HEAD.json` with rows > 0.
-- [ ] Live site and release unchanged: `gh release view warehouse --json assets -q '.assets|length'` is the same before and after, and the site footer's "updated" time did not move.
+- [x] Run green; `deploy` and `sync` skipped.
+- [x] Artifact has `web/out/index.html`; scratch `HEAD.json` 380 rows (schema 3); 258 games ingested, validation ok, site 280.3 MB. Same as the local rehearsal.
+- [x] Live site and release unchanged: 308 release assets before and after; footer "updated" unchanged; no commits by the workflow; `predictions/HEAD.json` still 0 rows.
 
-## 5. Owner, around Oct 27: opening-night rehearsal on GitHub
+## 5. Opening-night rehearsal on GitHub (done 2026-10-06, run 37411119724)
 
 ```bash
 gh workflow run nightly.yml -f rehearsal=true -f today=2026-11-02 -f nsim=3000
 ```
 
-- [ ] Run green. The artifact's `data/rehearsal/nightly_status.json` has `"live": true` and `"logged"` > 300.
+- [x] Run green; `"live": true`, `"logged": 355`; preseason path ("no completed 2027 games yet"), 364 new games from ESPN; release and site unchanged.
+- Also 2026-10-06: `deploy.yml` dispatched twice (runs 37410406917, 37412576319): the live site now runs Phases 1-5.
 
 ## 6. Owner, Nov 1: final checks
 
