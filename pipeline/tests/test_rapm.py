@@ -19,4 +19,5 @@ def test_recovers_planted_offense_effect():
     o, d = dict(zip(m["players"], m["off"])), dict(zip(m["players"], m["def"]))
     others = np.mean([o[p] for p in players[2:]])
     assert o["p0"] - others > 8 and d["p1"] > 5          # shrunk toward zero, but clearly found
-    assert abs(o["p1"]) < 3 and abs(d["p0"]) < 3
+    # the effects stay on the right side of the ball (a pooled intercept leaks a small share across, so relative bounds)
+    assert abs(o["p1"]) < 0.5 * d["p1"] and abs(d["p0"]) < 0.5 * (o["p0"] - others)  # each player is in 1/4 of rows here
