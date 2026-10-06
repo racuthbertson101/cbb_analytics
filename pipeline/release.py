@@ -30,7 +30,7 @@ from pathlib import Path
 from pipeline.warehouse.paths import ROOT, WH
 
 TAG = "warehouse"
-TABLES = ["games", "team_games", "player_games", "teams", "team_seasons", "rosters", "player_seasons", "player_impacts", "pbp_scores"]
+TABLES = ["games", "team_games", "player_games", "teams", "team_seasons", "rosters", "player_seasons", "player_impacts", "player_impacts_v2", "pbp_scores"]
 ART = ROOT / "data" / "backtest"
 SHOTS = ROOT / "web" / "public" / "data" / "shots"
 STAGE = ROOT / "data" / "stage"

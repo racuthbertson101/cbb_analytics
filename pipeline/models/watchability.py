@@ -32,14 +32,18 @@ def rating_context(season: int, R: pd.DataFrame):
 
 
 def star_table(season: int) -> dict:
-    """Best player impact per team from the previous season for players on the team's current-season roster (pregame proxy)."""
-    prev = table_path("player_impacts", season - 1)
+    """Best player impact (v2) per team from the previous season for players on the team's current-season roster (pregame proxy)."""
+    # Phase 5b.3: impact v2 (RAPM with box prior; box prior alone before 2024-25), falling back to v1 if v2 is missing
+    v2, prev = table_path("player_impacts_v2", season - 1), table_path("player_impacts", season - 1)
     cur = table_path("player_games", season)
     ro = table_path("rosters", season)
-    if not prev.exists():
+    if v2.exists():
+        pi = pd.read_parquet(v2).rename(columns={"net": "imp"})
+    elif prev.exists():
+        pi = pd.read_parquet(prev)
+    else:
         return {}
-    pi = pd.read_parquet(prev)
-    pi = pi[pi["min"] >= 300].set_index("athlete_id")
+    pi = pi[pi["min"] >= 300].sort_values("imp", ascending=False).drop_duplicates("athlete_id").set_index("athlete_id")
     if ro.exists():
         r = pd.read_parquet(ro)[["team_id", "athlete_id"]]
     elif cur.exists():

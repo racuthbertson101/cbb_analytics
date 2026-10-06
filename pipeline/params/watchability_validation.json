@@ -1,0 +1,60 @@
+{
+ "definition_national": "\\b(ABC|CBS|NBC|FOX|ESPN|ESPN2|ESPNU|ESPNEWS|FS1|FS2|TBS|TNT|truTV|CBSSN|CBS Sports Network)\\b",
+ "seasons": [
+  2023,
+  2024,
+  2025,
+  2026
+ ],
+ "n_games": 22941,
+ "national_share": 0.213,
+ "score": {
+  "vs_national_tv": 0.459,
+  "vs_attendance": 0.525
+ },
+ "components": {
+  "quality": {
+   "vs_national_tv": 0.493,
+   "vs_attendance": 0.707
+  },
+  "competitiveness": {
+   "vs_national_tv": 0.065,
+   "vs_attendance": -0.226
+  },
+  "tempo": {
+   "vs_national_tv": -0.027,
+   "vs_attendance": 0.023
+  },
+  "star_power": {
+   "vs_national_tv": 0.428,
+   "vs_attendance": 0.685
+  },
+  "stakes": {
+   "vs_national_tv": 0.431,
+   "vs_attendance": 0.51
+  }
+ },
+ "by_season": {
+  "2023": {
+   "n": 5707,
+   "vs_national_tv": 0.466,
+   "vs_attendance": 0.495
+  },
+  "2024": {
+   "n": 5723,
+   "vs_national_tv": 0.448,
+   "vs_attendance": 0.523
+  },
+  "2025": {
+   "n": 5759,
+   "vs_national_tv": 0.448,
+   "vs_attendance": 0.535
+  },
+  "2026": {
+   "n": 5752,
+   "vs_national_tv": 0.487,
+   "vs_attendance": 0.556
+  }
+ },
+ "note": "Spearman rank correlations over completed D-I games; positive = higher watchability goes with national TV / bigger crowds."
+}

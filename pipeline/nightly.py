@@ -167,6 +167,13 @@ def main(argv=None):
         imp = model.impacts(ps, pj["shrink_k_minutes"])
         out = ps.merge(imp[["athlete_id", "team_id", "imp_o", "imp_d", "imp"]], on=["athlete_id", "team_id"])
         out.to_parquet(table_path("player_impacts", season), index=False)
+        # impact v2 for the live season: box prior from players_v2.json, team-adjusted (live RAPM needs live stints)
+        from pipeline.players import impact_v2
+
+        P2 = json.loads((ROOT / "pipeline" / "params" / "players_v2.json").read_text())["prior"]
+        v2 = impact_v2.season_impacts(season, P2)
+        table_path("player_impacts_v2", season).parent.mkdir(parents=True, exist_ok=True)
+        v2.to_parquet(table_path("player_impacts_v2", season), index=False)
 
         # 3. validate
         bad = validate(season, live=True)

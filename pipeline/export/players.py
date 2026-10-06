@@ -30,6 +30,10 @@ def export_players(seasons=None, last_season=CURRENT_SEASON):
     career = {}
     for y in seasons:
         pi = pd.read_parquet(table_path("player_impacts", y))
+        v2p = table_path("player_impacts_v2", y)
+        if v2p.exists():  # Phase 5b: impact v2 (RAPM with box prior) replaces the box-only v1 values in imp/imp_o/imp_d
+            v2 = pd.read_parquet(v2p)[["team_id", "athlete_id", "off", "def", "net"]]
+            pi = pi.drop(columns=["imp_o", "imp_d", "imp"]).merge(v2.rename(columns={"off": "imp_o", "def": "imp_d", "net": "imp"}), on=["team_id", "athlete_id"], how="left")
         d1 = set(pd.read_parquet(table_path("team_seasons", y)).query("is_d1").team_id)
         pi = pi[pi.team_id.isin(d1) & (pi["min"] >= MIN_EXPORT)].copy()
         pi["mpg"] = pi["min"] / pi.gp

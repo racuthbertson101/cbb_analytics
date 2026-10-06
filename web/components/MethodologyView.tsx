@@ -46,6 +46,12 @@ export default function MethodologyView() {
   const prod = useJson<Prod>("params/adjeff.json").data;
   const poss = useJson<Poss>("params/possessions.json").data;
   const pl = useJson<PlayersP>("params/players.json").data;
+  type Smell = { n: number; position_means: Record<string, number>; sd: number; top25_min_mpg: number; pass: boolean };
+  const p2 = useJson<{ prior: { off: { cv_corr: number }; def: { cv_corr: number }; n_players: number }; smell_tests: Record<string, Smell>;
+    smell_thresholds: { position_mean_abs_max: number; sd_min: number; sd_max: number; top25_min_mpg: number };
+    roster_prior_cv?: { seasons: number[]; rmse_v1_o: number; rmse_v1_d: number; rmse_v2_o: number; rmse_v2_d: number; v2_better_seasons_o: number; v2_better_seasons_d: number; n_seasons: number; adopt_v2_in_prior: boolean } }>("params/players_v2.json").data;
+  const ra = useJson<{ seasons: Record<string, { lambda: number; games: number; split_half_corr: { net: number; n: number }; sd_net_1000poss: number }>; next_season_corr?: Record<string, { n: number; net: number }> }>("params/rapm.json").data;
+  const wv = useJson<{ seasons: number[]; n_games: number; national_share: number; score: { vs_national_tv: number; vs_attendance: number }; components: Record<string, { vs_national_tv: number | null; vs_attendance: number | null }> }>("params/watchability_validation.json").data;
   const cs = useJson<Cons>("params/consensus.json").data;
   const rp = useJson<{ pooled: { n: number; corr_net: number; corr_off: number; corr_def: number; spearman_net: number } }>("params/rapm_compare.json").data;
   const el = useJson<Record<string, { K: number; hca: number; carry: number; cap: number }>>("params/elo_mle.json").data;
@@ -181,7 +187,21 @@ export default function MethodologyView() {
         <p>Conference standings are simulated at least 20,000 times: completed conference games are fixed, and each remaining game is sampled as predicted margin plus normal noise (spread from the margin-spread model above) with a sampled total (noise sd from backtest residuals), rounded to integer scores so point-differential rules work. Each simulated final table is ordered with that conference&apos;s own tiebreaker rules (data files in <code>config/tiebreakers</code>), where a partially resolved multi-team tie restarts from the first rule for the teams still tied, and coin flips or draws are random. Steps that use NET or RPI use our adjusted-efficiency rating instead. Each conference is labeled <b className="text-ink">verified</b> (rule text found on an official conference page) or <b className="text-ink">fallback</b> (generic or best-known rules); see each conference page for its source link. Tournament field sizes are configuration values for the 2025-26 format. Best/worst possible finish uses win-count bounds.</p>
       </Section>
 
-      <Section title="Player impact rating (v1, box-score based, experimental)">
+      <Section title="Player impact v2 (play-by-play RAPM with a box prior, experimental)">
+        <p>Impact v2 is the player rating shown on player, team and leaderboard pages. From 2024-25 on it starts from regularized adjusted plus-minus (RAPM): lineup stints rebuilt from substitutions, and a possession-weighted ridge regression of points per 100 possessions on the ten players on the floor plus home court. The ridge strength is chosen on later games within the season. Each player is shrunk toward a box-score prior (his box rates and role, mapped to RAPM by a player-level regression), so low-minute players stay near what their box score suggests. A team&apos;s minutes-weighted sum matches its adjusted rating. Earlier seasons have no substitution data, so they use the box-score prior alone.</p>
+        {ra && p2 && (<>
+          <table className="dense prose"><tbody>
+            {Object.entries(ra.seasons).map(([y, v]) => <tr key={y}><td className="l">RAPM {seasonRange(+y, +y)}</td><td className="l">ridge {v.lambda}, {v.games.toLocaleString()} games, split-half correlation {v.split_half_corr.net.toFixed(2)} ({v.split_half_corr.n} players), SD {v.sd_net_1000poss.toFixed(1)} among 1,000+ possession players</td></tr>)}
+            {ra.next_season_corr && Object.entries(ra.next_season_corr).map(([k, v]) => <tr key={k}><td className="l">Next-season correlation</td><td className="l">{v.net.toFixed(2)} ({v.n} players with 500+ possessions in both; the first season is only a quarter covered)</td></tr>)}
+            <tr><td className="l">Box prior vs RAPM (out-of-fold correlation)</td><td className="l">offense {p2.prior.off.cv_corr.toFixed(2)}, defense {p2.prior.def.cv_corr.toFixed(2)} ({p2.prior.n_players.toLocaleString()} player-seasons)</td></tr>
+            {Object.entries(p2.smell_tests).map(([y, t]) => <tr key={y}><td className="l">Smell tests {seasonRange(+y, +y)} ({t.n.toLocaleString()} players, 500+ min)</td><td className="l">position means {Object.entries(t.position_means).map(([k, v]) => `${k} ${v > 0 ? "+" : ""}${v.toFixed(1)}`).join(", ")} (limit ±{p2.smell_thresholds.position_mean_abs_max}); SD {t.sd.toFixed(1)} (target {p2.smell_thresholds.sd_min}-{p2.smell_thresholds.sd_max}); lowest mpg in the top 25 {t.top25_min_mpg} (limit {p2.smell_thresholds.top25_min_mpg}): <b className="text-ink">{t.pass ? "pass" : "fail"}</b></td></tr>)}
+            {p2.roster_prior_cv && <tr><td className="l">Preseason roster prior with v2 ({seasonRange(p2.roster_prior_cv.seasons[0], p2.roster_prior_cv.seasons[1])})</td><td className="l">next-season RMSE offense {p2.roster_prior_cv.rmse_v2_o.toFixed(2)} vs {p2.roster_prior_cv.rmse_v1_o.toFixed(2)} with v1 (better in {p2.roster_prior_cv.v2_better_seasons_o}/{p2.roster_prior_cv.n_seasons}), defense {p2.roster_prior_cv.rmse_v2_d.toFixed(3)} vs {p2.roster_prior_cv.rmse_v1_d.toFixed(3)} (better in {p2.roster_prior_cv.v2_better_seasons_d}/{p2.roster_prior_cv.n_seasons}): <b className="text-ink">{p2.roster_prior_cv.adopt_v2_in_prior ? "adopted" : "not adopted, so the prior keeps v1"}</b></td></tr>}
+          </tbody></table>
+          <p>It stays labeled experimental because one smell test still fails: centers average slightly more than 2 points per 100 above zero in the latest season.</p>
+        </>)}
+      </Section>
+
+      <Section title="Player impact v1 (box-score based, retired from display)">
         <p>Team adjusted offense and defense (from the model above) are regressed on minutes-weighted player rate features (usage, true shooting, assist/turnover/rebound/steal/block rates, free-throw and three-point rates). The coefficients are learned; a player&apos;s impact is his weighted feature value divided by five, so a player&apos;s minutes share times his impact adds up to the team rating. A low-minutes shrinkage (weight minutes / (minutes + k)) was tested; k is in the table below, and 0 means validation chose none. This rating fails a basic smell test: it rewards rebounding and shot blocking far too much, so backup centers can outrank star guards. The site shows it only on player pages, labeled experimental, and a play-by-play (RAPM) replacement is planned.</p>
         {pl && (<>
           <table className="dense prose"><tbody>
@@ -208,13 +228,14 @@ export default function MethodologyView() {
       </Section>
 
       <Section title="Watchability (judgment call)">
-        <p>Each upcoming game gets a 1-10 watchability score. Five components are each scaled to 0-100 by their percentile among historical D-I games (data-derived): quality (average AdjEM of the two teams), competitiveness (small predicted margin), tempo (predicted possessions), star power (best player impact on either team, which inherits the experimental impact rating&apos;s bias toward big men) and stakes (rank proximity, conference-title leverage from the standings simulation, bubble proximity). The weights are <b className="text-ink">chosen by hand, not fitted</b>: there is no ground truth for how watchable a game is. Score = 1 + 9 × weighted average percentile / 100. A component that is unavailable for a game has its weight redistributed.</p>
+        <p>Each upcoming game gets a 1-10 watchability score. Five components are each scaled to 0-100 by their percentile among historical D-I games (data-derived): quality (average AdjEM of the two teams), competitiveness (small predicted margin), tempo (predicted possessions), star power (the best previous-season impact v2 on either roster) and stakes (rank proximity, conference-title leverage from the standings simulation, bubble proximity). The weights are <b className="text-ink">chosen by hand, not fitted</b>: there is no ground truth for how watchable a game is. Score = 1 + 9 × weighted average percentile / 100. A component that is unavailable for a game has its weight redistributed.</p>
         {wt && (
           <table className="dense prose"><tbody>
             {Object.entries(wt.weights).map(([k, v]) => <tr key={k}><td className="l">{k.replace("_", " ")}</td><td>{v.toFixed(2)}</td></tr>)}
             {Object.entries(wt.stakes_weights).map(([k, v]) => <tr key={k}><td className="l text-muted">stakes: {k.replace("_", " ")}</td><td>{v.toFixed(2)}</td></tr>)}
           </tbody></table>
         )}
+        {wv && <p>External check ({seasonRange(wv.seasons[0], wv.seasons[wv.seasons.length - 1])}, {wv.n_games.toLocaleString()} completed D-I games, {(wv.national_share * 100).toFixed(0)}% on national TV): the score&apos;s rank correlation is {wv.score.vs_national_tv.toFixed(2)} with being on national TV and {wv.score.vs_attendance.toFixed(2)} with attendance. By component, national TV: {Object.entries(wv.components).map(([k, v]) => `${k.replace("_", " ")} ${v.vs_national_tv?.toFixed(2) ?? "–"}`).join(", ")}. Star power uses impact v2.</p>}
       </Section>
 
       <Section title="Judgment calls">

@@ -45,6 +45,7 @@ export default function PlayersView() {
     { id: "gp", header: "GP", accessorFn: (r) => r.gp },
     { id: "mpg", header: "MPG", accessorFn: (r) => r.mpg, cell: stat("mpg", 1) },
     { id: "ppg", header: "PPG", accessorFn: (r) => r.ppg, cell: stat("ppg", 1) },
+    { id: "imp", header: "Impact (exp.)", accessorFn: (r) => r.imp, cell: stat("imp", 1, "pc_imp", true) },
     { id: "p40", header: "Pts/40", accessorFn: (r) => (r.mpg ? ((r.ppg as number) / (r.mpg as number)) * 40 : null), cell: ({ getValue }) => <span className="block px-1.5">{fmt(getValue() as number | null, 1)}</span> },
     { id: "rpg", header: "RPG", accessorFn: (r) => r.rpg, cell: stat("rpg", 1) },
     { id: "apg", header: "APG", accessorFn: (r) => r.apg, cell: stat("apg", 1) },
@@ -95,7 +96,7 @@ export default function PlayersView() {
           </table>
         </div>
       </div>
-      <p className="mt-3 text-xs text-faint">Showing the top {Math.min(400, table.getRowModel().rows.length)} of {rows.length} matching players. The experimental box-score impact rating is shown only on player pages: it overrates rebounders and shot blockers, so it is not used to rank players here.</p>
+      <p className="mt-3 text-xs text-faint">Showing the top {Math.min(400, table.getRowModel().rows.length)} of {rows.length} matching players. Impact v2 (experimental) is play-by-play RAPM from 2024-25 on, shrunk toward a box-score estimate (box estimate alone before); see Methodology.</p>
     </div>
   );
 }

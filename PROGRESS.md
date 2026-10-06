@@ -69,7 +69,11 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
 - [ ] Phase 5: RAPM impact, star power, estimate interval
   - [x] 5a.1 Stints from substitutions (2025-26: 99.1% of D-I games, poss within 3% in 98%; substitutions do not exist before 2024-25)
   - [x] 5a.2 RAPM (lambda walk-forward; split-half 0.46; partial next-season 0.27; face valid) in params/rapm.json
-  - [ ] 5b box prior + v2 impact, roster-prior CV, watchability validation <- NEXT
-  - [ ] 5c estimate band, Compare player gate
+  - [x] 5b.1 Impact v2 (RAPM + box prior, team-consistent): replaces v1 on the site; smell gate fails only on 2025-26 center mean (+2.40 vs 2.0), so it stays "experimental"
+  - [x] 5b.2 Roster prior with v2: not adopted (defense better in 3/12 seasons; rule needs 7)
+  - [x] 5b.3 Star power on v2; watchability vs national TV 0.46, attendance 0.53 (params/watchability_validation.json, Methodology)
+  - [x] 5b.4 Label kept (gate failed); v2 shown on Player, Team, Players pages
+  - Verified 2026-10-05: pytest 261 passed, next build ok, 56/56 screenshot loads clean; Iowa/Florida/Stirtz/Players reviewed
+  - [ ] 5c estimate band, Compare player gate <- NEXT
 - [ ] Phase 6: Modeling cleanup and conference fixes
 - [ ] Phase 7: Design pass
