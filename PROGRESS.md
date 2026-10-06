@@ -66,6 +66,10 @@ Live URL: https://racuthbertson101.github.io/cbb_analytics/ (deploy.yml and a ma
   - [x] 4a.1-4a.4 profiles (leakage-tested), team histories, analogs; matchup test pre-registered (ec3125e) and run: nothing adopted, all style features context only (Methodology table)
   - [x] 4b.1 Compare rebuilt (17 sections, ContextTags from matchup_eval.json, GameLinks, cross-season hypothetical, as-of in season)
   - Verified: pytest 257 passed; site 280.2 MB; 56/56 screenshot loads clean, 792 linked scores; first load ~0.5 MB data gzipped (2.2 MB raw)
-- [ ] Phase 5: RAPM impact, star power, estimate interval <- NEXT
+- [ ] Phase 5: RAPM impact, star power, estimate interval
+  - [x] 5a.1 Stints from substitutions (2025-26: 99.1% of D-I games, poss within 3% in 98%; substitutions do not exist before 2024-25)
+  - [x] 5a.2 RAPM (lambda walk-forward; split-half 0.46; partial next-season 0.27; face valid) in params/rapm.json
+  - [ ] 5b box prior + v2 impact, roster-prior CV, watchability validation <- NEXT
+  - [ ] 5c estimate band, Compare player gate
 - [ ] Phase 6: Modeling cleanup and conference fixes
 - [ ] Phase 7: Design pass
