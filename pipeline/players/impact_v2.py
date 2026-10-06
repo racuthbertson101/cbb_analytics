@@ -181,3 +181,53 @@ if __name__ == "__main__":
     r = run()
     print(json.dumps({k: {kk: vv for kk, vv in v.items() if kk != "top10"} for k, v in r["smell_tests"].items()}, indent=1))
     print("prior cv corr: off", r["prior"]["off"]["cv_corr"], "def", r["prior"]["def"]["cv_corr"])
+
+
+class StoredV2:
+    """Adapter with the ImpactModel.impacts() interface, serving stored v2 impacts (for pipeline.players.prior_eval)."""
+
+    def impacts(self, ps: pd.DataFrame, k: float = 0) -> pd.DataFrame:
+        y = int(ps.season.iloc[0]) if "season" in ps else None
+        v = pd.read_parquet(table_path("player_impacts_v2", y))
+        out = ps[["team_id", "athlete_id", "min", "min_share"]].merge(v[["team_id", "athlete_id", "off", "def"]], on=["team_id", "athlete_id"], how="left")
+        out["imp_o"], out["imp_d"] = out.off.fillna(0.0), out["def"].fillna(0.0)
+        out["imp"] = out.imp_o + out.imp_d
+        return out.drop(columns=["off", "def"])
+
+
+def roster_cv(tests=range(2013, 2025)) -> dict:
+    """Phase 5b.2: next-season team rating error of the roster prior with v2 impacts vs v1 (same rows, same fits).
+    Rule (DECISIONS.md, written before running): adopt v2 only if pooled RMSE improves for offense and defense and each
+    improves in at least 7 of 12 seasons."""
+    from .impact import team_targets
+    from .prior_eval import build_rows, fit_predict
+
+    cache = {y: load_ps(y).assign(season=y) for y in range(2010, 2027) if table_path("player_seasons", y).exists()}
+    tg = team_targets()
+    d1s = {y: set(pd.read_parquet(table_path("team_seasons", y)).query("is_d1").team_id) for y in cache}
+    base_o, base_d = ["o1", "o2"], ["d1", "d2"]
+    full_o, full_d = base_o + ["ret_o", "in_o", "ret_share", "in_share"], base_d + ["ret_d", "in_d", "ret_share", "in_share"]
+    m = StoredV2()
+    v1 = json.loads((PARAMS / "players_prior_eval.json").read_text())
+    v1csv = pd.read_csv(PARAMS / "players_prior_eval.csv")
+    rows = []
+    for S in tests:
+        tr = [T for T in range(2012, S) if T - 1 in cache]
+        train = pd.concat([build_rows(T, m, 0, cache, tg, d1s) for T in tr])
+        test = build_rows(S, m, 0, cache, tg, d1s)
+        f = fit_predict(train, test, full_o, full_d)
+        b = fit_predict(train, test, base_o, base_d)
+        k, w = v1["chosen_k_by_season"][str(S)], v1["chosen_window_by_season"][str(S)]
+        r1 = v1csv[(v1csv.S == S) & (v1csv.k == k) & (v1csv.win == w)].iloc[0]
+        rows.append({"S": S, "base_o": b["o"], "base_d": b["d"], "v2_o": f["o"], "v2_d": f["d"], "v1_o": float(r1.full_o), "v1_d": float(r1.full_d)})
+        print("roster cv", S, {k_: round(v_, 3) for k_, v_ in rows[-1].items() if k_ != "S"}, flush=True)
+    R = pd.DataFrame(rows)
+    rm = lambda c: float(np.sqrt((R[c] ** 2).mean()))  # noqa: E731
+    res = {"seasons": [int(R.S.min()), int(R.S.max())], **{f"rmse_{c}": round(rm(c), 4) for c in ("base_o", "base_d", "v1_o", "v1_d", "v2_o", "v2_d")},
+           "v2_better_seasons_o": int((R.v2_o < R.v1_o).sum()), "v2_better_seasons_d": int((R.v2_d < R.v1_d).sum()), "n_seasons": int(len(R)),
+           "by_season": R.round(4).to_dict("records")}
+    res["adopt_v2_in_prior"] = bool(rm("v2_o") < rm("v1_o") and rm("v2_d") < rm("v1_d") and res["v2_better_seasons_o"] >= 7 and res["v2_better_seasons_d"] >= 7)
+    p = json.loads((PARAMS / "players_v2.json").read_text())
+    p["roster_prior_cv"] = res
+    (PARAMS / "players_v2.json").write_text(json.dumps(p, indent=1))
+    return res
